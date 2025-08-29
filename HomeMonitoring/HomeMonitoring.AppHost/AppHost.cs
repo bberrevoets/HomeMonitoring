@@ -1,5 +1,8 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+var mailpit = builder.AddMailPit("mailpit")
+    .WithDataVolume("homemonitoring-mailpit");
+
 // Add Seq for centralized logging with explicit endpoint
 var seq = builder.AddSeq("seq")
     .WithDataVolume("homemonitoring-seq-server")
@@ -7,14 +10,26 @@ var seq = builder.AddSeq("seq")
 
 // Add PostgreSQL database
 var postgres = builder.AddPostgres("postgres")
+    .WithPgWeb()
     .WithDataVolume("homemonitoring-postgres")
     .AddDatabase("sensorsdb");
+
+// Add the Web application
+var web = builder.AddProject<Projects.HomeMonitoring_Web>("web")
+    .WaitFor(seq)
+    .WaitFor(postgres)
+    .WithReference(seq)
+    .WithReference(postgres)
+    .WithReference(mailpit)
+    .WaitFor(mailpit);
 
 // Add the SensorAgent worker service
 var sensorAgent = builder.AddProject<Projects.HomeMonitoring_SensorAgent>("sensoragent")
     .WaitFor(seq)
     .WaitFor(postgres)
     .WithReference(seq)
-    .WithReference(postgres);
+    .WithReference(postgres)
+    .WithReference(mailpit)
+    .WaitFor(mailpit);
 
 builder.Build().Run();

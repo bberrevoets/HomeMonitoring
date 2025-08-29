@@ -1,0 +1,50 @@
+@page
+@model HomeMonitoring.Web.Pages.Devices.IndexModel
+@{
+    ViewData["Title"] = "Devices";
+}
+
+<h1>Devices</h1>
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Add New Device</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>IP Address</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Last Seen</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var device in Model.Devices)
+        {
+            <tr>
+                <td>@device.Name</td>
+                <td>@device.IpAddress</td>
+                <td>@device.ProductType</td>
+                <td>
+                    @if (device.IsEnabled)
+                    {
+                        <span class="badge bg-success">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactive</span>
+                    }
+                </td>
+                <td>@device.LastSeenAt.ToString("g")</td>
+                <td>
+                    <a asp-page="./Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
+                    <a asp-page="./Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
+                    <a asp-page="./Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

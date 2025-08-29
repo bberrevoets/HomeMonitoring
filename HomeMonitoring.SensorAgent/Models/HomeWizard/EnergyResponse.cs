@@ -1,19 +1,113 @@
-﻿namespace HomeMonitoring.SensorAgent.Models.HomeWizard;
+﻿using System.Text.Json.Serialization;
+using HomeMonitoring.SensorAgent.JsonConverters;
+
+namespace HomeMonitoring.SensorAgent.Models.HomeWizard;
 
 public record EnergyResponse
 {
-    public required string SmrVersion { get; init; }
+    [JsonPropertyName("wifi_ssid")] 
+    public string? WifiSsid { get; init; }
+    
+    [JsonPropertyName("wifi_strength")] 
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? WifiStrength { get; init; }
+    
+    [JsonPropertyName("smr_version")] 
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? SmrVersion { get; init; }
+    
+    [JsonPropertyName("meter_model")] 
     public string? MeterModel { get; init; }
-    public required string WifiSsid { get; init; }
-    public required int WifiStrength { get; init; }
+    
+    [JsonPropertyName("unique_id")] 
+    public string? UniqueId { get; init; }
+    
+    [JsonPropertyName("active_tariff")] 
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? ActiveTariff { get; init; }
+    
+    [JsonPropertyName("total_power_import_kwh")]
+    public double? TotalPowerImportKWh { get; init; }
+    
+    [JsonPropertyName("total_power_import_t1_kwh")]
     public double? TotalPowerImportT1KWh { get; init; }
+    
+    [JsonPropertyName("total_power_import_t2_kwh")]
     public double? TotalPowerImportT2KWh { get; init; }
+    
+    [JsonPropertyName("total_power_export_kwh")]
+    public double? TotalPowerExportKWh { get; init; }
+    
+    [JsonPropertyName("total_power_export_t1_kwh")]
     public double? TotalPowerExportT1KWh { get; init; }
+    
+    [JsonPropertyName("total_power_export_t2_kwh")]
     public double? TotalPowerExportT2KWh { get; init; }
-    public required double ActivePowerW { get; init; }
-    public required double ActivePowerL1W { get; init; }
+    
+    [JsonPropertyName("active_power_w")] 
+    public double? ActivePowerW { get; init; }
+    
+    [JsonPropertyName("active_power_l1_w")]
+    public double? ActivePowerL1W { get; init; }
+    
+    [JsonPropertyName("active_current_a")] 
+    public double? ActiveCurrentA { get; init; }
+    
+    [JsonPropertyName("active_current_l1_a")]
+    public double? ActiveCurrentL1A { get; init; }
+    
+    [JsonPropertyName("voltage_sag_l1_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSagL1Count { get; init; }
+    
+    [JsonPropertyName("voltage_swell_l1_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSwellL1Count { get; init; }
+    
+    [JsonPropertyName("any_power_fail_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? AnyPowerFailCount { get; init; }
+    
+    [JsonPropertyName("long_power_fail_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? LongPowerFailCount { get; init; }
+    
+    [JsonPropertyName("external")] 
+    public object[]? External { get; init; }
+    
+    // Three-phase properties (optional for single-phase meters)
+    [JsonPropertyName("active_power_l2_w")]
     public double? ActivePowerL2W { get; init; }
+    
+    [JsonPropertyName("active_power_l3_w")]
     public double? ActivePowerL3W { get; init; }
-    public required double TotalGasM3 { get; init; }
-    public required string GasTimestamp { get; init; }
+    
+    [JsonPropertyName("active_current_l2_a")]
+    public double? ActiveCurrentL2A { get; init; }
+    
+    [JsonPropertyName("active_current_l3_a")]
+    public double? ActiveCurrentL3A { get; init; }
+    
+    [JsonPropertyName("voltage_sag_l2_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSagL2Count { get; init; }
+    
+    [JsonPropertyName("voltage_sag_l3_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSagL3Count { get; init; }
+    
+    [JsonPropertyName("voltage_swell_l2_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSwellL2Count { get; init; }
+    
+    [JsonPropertyName("voltage_swell_l3_count")]
+    [JsonConverter(typeof(NullableIntFromNumberConverter))]
+    public int? VoltageSwellL3Count { get; init; }
+    
+    // Gas meter properties (optional)
+    [JsonPropertyName("total_gas_m3")]
+    public double? TotalGasM3 { get; init; }
+    
+    [JsonPropertyName("gas_timestamp")]
+    public long? GasTimestamp { get; init; }
 }

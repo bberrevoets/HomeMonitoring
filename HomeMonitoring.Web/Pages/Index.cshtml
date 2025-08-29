@@ -1,0 +1,22 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Home Monitoring</h1>
+    <p>Monitor your HomeWizard energy devices in real-time.</p>
+    
+    <div class="row mt-5">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Get Started</h5>
+                    <p class="card-text">Add your HomeWizard devices to start monitoring your energy consumption.</p>
+                    <a asp-page="/Devices/Index" class="btn btn-primary">Manage Devices</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

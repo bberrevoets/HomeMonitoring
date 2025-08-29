@@ -9,8 +9,7 @@ public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly TimeSpan _discoveryInterval = TimeSpan.FromHours(1);
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(30);
+    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
 
     public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
     {
@@ -22,20 +21,8 @@ public class Worker : BackgroundService
     {
         _logger.LogInformation("SensorAgent starting at: {StartTime}", DateTimeOffset.Now);
 
-        // Create a timer for device discovery
-        using var discoveryTimer = new PeriodicTimer(_discoveryInterval);
-        
-        // Run initial discovery
-        await RunDiscoveryAsync(stoppingToken);
-
-        // Start discovery timer
-        _ = Task.Run(async () =>
-        {
-            while (await discoveryTimer.WaitForNextTickAsync(stoppingToken))
-            {
-                await RunDiscoveryAsync(stoppingToken);
-            }
-        }, stoppingToken);
+        // Wait for database to be ready
+        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
 
         // Main polling loop
         using var pollingTimer = new PeriodicTimer(_pollingInterval);
@@ -43,21 +30,6 @@ public class Worker : BackgroundService
         while (await pollingTimer.WaitForNextTickAsync(stoppingToken))
         {
             await PollDevicesAsync(stoppingToken);
-        }
-    }
-
-    private async Task RunDiscoveryAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var homeWizardService = scope.ServiceProvider.GetRequiredService<IHomeWizardService>();
-            _logger.LogDebug("Running device discovery");
-            await homeWizardService.DiscoverDevicesAsync(stoppingToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during device discovery");
         }
     }
 
@@ -74,6 +46,12 @@ public class Worker : BackgroundService
                 .Where(d => d.IsEnabled)
                 .ToListAsync(stoppingToken);
 
+            if (devices.Count == 0)
+            {
+                _logger.LogDebug("No devices configured yet");
+                return;
+            }
+
             _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
 
             foreach (var device in devices)
@@ -87,12 +65,11 @@ public class Worker : BackgroundService
                     {
                         DeviceId = device.Id,
                         Timestamp = DateTime.UtcNow,
-                        ActivePowerW = energyData.ActivePowerW,
+                        ActivePowerW = energyData.ActivePowerW ?? 0,
                         TotalPowerImportT1KWh = energyData.TotalPowerImportT1KWh,
                         TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
                         TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
                         TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
-                        TotalGasM3 = energyData.TotalGasM3
                     };
 
                     dbContext.EnergyReadings.Add(reading);

@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Net;
+using System.Text.Json;
 
 namespace HomeMonitoring.SensorAgent.Services;
 
@@ -14,6 +15,7 @@ public class HomeWizardService : IHomeWizardService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SensorDbContext _dbContext;
     private readonly ILogger<HomeWizardService> _logger;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     public HomeWizardService(
         IHttpClientFactory httpClientFactory,
@@ -23,6 +25,11 @@ public class HomeWizardService : IHomeWizardService
         _httpClientFactory = httpClientFactory;
         _dbContext = dbContext;
         _logger = logger;
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+        };
     }
 
     public async Task<DeviceResponse> GetDeviceInfoAsync(string ipAddress, CancellationToken cancellationToken = default)
@@ -30,15 +37,20 @@ public class HomeWizardService : IHomeWizardService
         try
         {
             using var client = _httpClientFactory.CreateClient();
-            var response = await client.GetFromJsonAsync<DeviceResponse>(
-                $"http://{ipAddress}/api", cancellationToken);
+            client.Timeout = TimeSpan.FromSeconds(5);
+            
+            var response = await client.GetAsync($"http://{ipAddress}/api", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var result = JsonSerializer.Deserialize<DeviceResponse>(json, _jsonOptions);
 
-            if (response == null)
+            if (result == null)
             {
-                throw new Exception($"Failed to get device info from {ipAddress}");
+                throw new Exception($"Failed to deserialize device info from {ipAddress}");
             }
 
-            return response;
+            return result;
         }
         catch (Exception ex)
         {
@@ -52,15 +64,27 @@ public class HomeWizardService : IHomeWizardService
         try
         {
             using var client = _httpClientFactory.CreateClient();
-            var response = await client.GetFromJsonAsync<EnergyResponse>(
-                $"http://{ipAddress}/api/v1/data", cancellationToken);
+            client.Timeout = TimeSpan.FromSeconds(5);
+            
+            var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogDebug("Received JSON from {IpAddress}: {Json}", ipAddress, json);
+            
+            var result = JsonSerializer.Deserialize<EnergyResponse>(json, _jsonOptions);
 
-            if (response == null)
+            if (result == null)
             {
-                throw new Exception($"Failed to get energy data from {ipAddress}");
+                throw new Exception($"Failed to deserialize energy data from {ipAddress}");
             }
 
-            return response;
+            return result;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error for energy data from {IpAddress}", ipAddress);
+            throw;
         }
         catch (Exception ex)
         {
@@ -99,7 +123,7 @@ public class HomeWizardService : IHomeWizardService
 
     private async Task<string?> GetLocalIpAddressAsync()
     {
-        var host = Dns.GetHostEntry(Dns.GetHostName());
+        var host = await Dns.GetHostEntryAsync(Dns.GetHostName());
         foreach (var ip in host.AddressList)
         {
             if (ip.AddressFamily == AddressFamily.InterNetwork)
@@ -115,7 +139,7 @@ public class HomeWizardService : IHomeWizardService
         try
         {
             // First ping to check if device is online
-            var ping = new Ping();
+            using var ping = new Ping();
             var reply = await ping.SendPingAsync(ipAddress, 100);
             
             if (reply.Status != IPStatus.Success)
