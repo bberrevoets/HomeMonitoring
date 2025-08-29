@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.AppHost", "H
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.ServiceDefaults", "HomeMonitoring\HomeMonitoring.ServiceDefaults\HomeMonitoring.ServiceDefaults.csproj", "{AABC97E3-7DE3-17F1-7E80-812012740588}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.SensorAgent", "HomeMonitoring.SensorAgent\HomeMonitoring.SensorAgent.csproj", "{A2431996-B0DF-003C-F7FB-481B9767FBE3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Aspire", "Aspire", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,9 +25,17 @@ Global
 		{AABC97E3-7DE3-17F1-7E80-812012740588}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AABC97E3-7DE3-17F1-7E80-812012740588}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AABC97E3-7DE3-17F1-7E80-812012740588}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2431996-B0DF-003C-F7FB-481B9767FBE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2431996-B0DF-003C-F7FB-481B9767FBE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2431996-B0DF-003C-F7FB-481B9767FBE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2431996-B0DF-003C-F7FB-481B9767FBE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D9B69D1E-7C52-40FD-8BBD-9919601344B7} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{AABC97E3-7DE3-17F1-7E80-812012740588} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6D525185-143D-4A27-AC2F-B46DF9F9136B}
