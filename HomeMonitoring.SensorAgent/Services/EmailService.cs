@@ -78,7 +78,7 @@ public class EmailService : IEmailService
                                  <div class='warning-box'>
                                      <strong>⚡ Possible Causes:</strong>
                                      <ul style='margin-bottom: 0;'>
-                                         <li>Device power loss (check powerbank if using P1 meter)</li>
+                                         <li>Device power loss (check powerbank if using a powerbank)</li>
                                          <li>Network connectivity issues</li>
                                          <li>Device malfunction or crash</li>
                                          <li>IP address changed (DHCP renewal)</li>
