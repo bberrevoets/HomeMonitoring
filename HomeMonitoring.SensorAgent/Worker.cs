@@ -58,7 +58,19 @@ public class Worker : BackgroundService
             {
                 try
                 {
-                    var energyData = await homeWizardService.GetEnergyDataAsync(device.IpAddress, stoppingToken);
+                    // Skip unsupported devices
+                    if (device.ProductType != HomeWizardProductType.HWE_P1 && 
+                        device.ProductType != HomeWizardProductType.HWE_SKT)
+                    {
+                        _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}", 
+                            device.ProductType, device.Name);
+                        continue;
+                    }
+
+                    var energyData = await homeWizardService.GetEnergyDataAsync(
+                        device.IpAddress, 
+                        device.ProductType, 
+                        stoppingToken);
                     
                     // Store the reading
                     var reading = new EnergyReading
@@ -70,6 +82,7 @@ public class Worker : BackgroundService
                         TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
                         TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
                         TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
+                        TotalGasM3 = energyData.TotalGasM3
                     };
 
                     dbContext.EnergyReadings.Add(reading);
@@ -78,13 +91,23 @@ public class Worker : BackgroundService
                     device.LastSeenAt = DateTime.UtcNow;
                     
                     await dbContext.SaveChangesAsync(stoppingToken);
-                    _logger.LogInformation("Collected energy data from {DeviceName} at {IpAddress}: PowerUsage={PowerW}W", 
-                        device.Name, device.IpAddress, energyData.ActivePowerW);
+                    
+                    _logger.LogInformation("Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W", 
+                        device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
+                }
+                catch (NotSupportedException ex)
+                {
+                    _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}", 
+                        device.Name, ex.Message);
+                    
+                    // Disable unsupported devices to avoid repeated errors
+                    device.IsEnabled = false;
+                    await dbContext.SaveChangesAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error collecting data from device {DeviceName} at {IpAddress}", 
-                        device.Name, device.IpAddress);
+                    _logger.LogError(ex, "Error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}", 
+                        device.Name, device.ProductType, device.IpAddress);
                 }
             }
         }

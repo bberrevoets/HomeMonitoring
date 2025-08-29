@@ -6,45 +6,86 @@
 
 <h1>Devices</h1>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <p>
     <a asp-page="Create" class="btn btn-primary">Add New Device</a>
 </p>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>IP Address</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Last Seen</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var device in Model.Devices)
-        {
+@if (Model.Devices.Any())
+{
+    <table class="table">
+        <thead>
             <tr>
-                <td>@device.Name</td>
-                <td>@device.IpAddress</td>
-                <td>@device.ProductType</td>
-                <td>
-                    @if (device.IsEnabled)
-                    {
-                        <span class="badge bg-success">Active</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-secondary">Inactive</span>
-                    }
-                </td>
-                <td>@device.LastSeenAt.ToString("g")</td>
-                <td>
-                    <a asp-page="./Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
-                    <a asp-page="./Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
-                    <a asp-page="./Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
-                </td>
+                <th>Name</th>
+                <th>Type</th>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+                <th></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var device in Model.Devices)
+            {
+                <tr>
+                    <td>@device.Name</td>
+                    <td>
+                        @switch(device.ProductType)
+                        {
+                            case HomeMonitoring.SensorAgent.Models.HomeWizardProductType.HWE_P1:
+                                <span class="badge bg-primary">P1 Meter</span>
+                                break;
+                            case HomeMonitoring.SensorAgent.Models.HomeWizardProductType.HWE_SKT:
+                                <span class="badge bg-info">Energy Socket</span>
+                                break;
+                            default:
+                                <span class="badge bg-secondary">@device.ProductTypeRaw</span>
+                                break;
+                        }
+                    </td>
+                    <td>@device.IpAddress</td>
+                    <td>
+                        @if (device.IsEnabled)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">Disabled</span>
+                        }
+                    </td>
+                    <td>
+                        @{
+                            var timeSinceLastSeen = DateTime.UtcNow - device.LastSeenAt;
+                            var isRecent = timeSinceLastSeen.TotalMinutes < 5;
+                        }
+                        <span class="@(isRecent ? "text-success" : "text-muted")">
+                            @device.LastSeenAt.ToLocalTime().ToString("g")
+                        </span>
+                    </td>
+                    <td>
+                        <a asp-page="./Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
+                        <a asp-page="./Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
+                        <a asp-page="./Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+        <h4 class="alert-heading">No devices found</h4>
+        <p>You haven't added any HomeWizard devices yet. Click the "Add New Device" button to get started.</p>
+        <hr>
+        <p class="mb-0">Currently supported devices: HWE-P1 (P1 Meter) and HWE-SKT (Energy Socket)</p>
+    </div>
+}

@@ -43,6 +43,17 @@ public class CreateModel : PageModel
 
             if (response != null)
             {
+                // Parse the product type
+                var productType = ParseProductType(response.ProductType);
+                
+                // Check if we support this product type
+                if (productType != HomeWizardProductType.HWE_P1 && productType != HomeWizardProductType.HWE_SKT)
+                {
+                    ModelState.AddModelError(string.Empty, 
+                        $"The device type '{response.ProductType}' is not currently supported. Only HWE-P1 and HWE-SKT devices are supported.");
+                    return Page();
+                }
+                
                 // Check if device already exists
                 var existingDevice = await _context.Devices
                     .FirstOrDefaultAsync(d => d.SerialNumber == response.SerialNumber);
@@ -57,7 +68,8 @@ public class CreateModel : PageModel
                 {
                     Name = string.IsNullOrWhiteSpace(Input.Name) ? response.ProductName : Input.Name,
                     IpAddress = Input.IpAddress,
-                    ProductType = response.ProductType,
+                    ProductType = productType,
+                    ProductTypeRaw = response.ProductType,
                     SerialNumber = response.SerialNumber,
                     DiscoveredAt = DateTime.UtcNow,
                     LastSeenAt = DateTime.UtcNow,
@@ -67,7 +79,7 @@ public class CreateModel : PageModel
                 _context.Devices.Add(device);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = $"Successfully added device: {device.Name}";
+                TempData["SuccessMessage"] = $"Successfully added {response.ProductType} device: {device.Name}";
                 return RedirectToPage("./Index");
             }
 
@@ -95,5 +107,22 @@ public class CreateModel : PageModel
                 "An error occurred while adding the device. Please ensure it's a HomeWizard device.");
             return Page();
         }
+    }
+    
+    private static HomeWizardProductType ParseProductType(string productTypeString)
+    {
+        return productTypeString switch
+        {
+            "HWE-P1" => HomeWizardProductType.HWE_P1,
+            "HWE-SKT" => HomeWizardProductType.HWE_SKT,
+            "HWE-WTR" => HomeWizardProductType.HWE_WTR,
+            "HWE-KWH1" => HomeWizardProductType.HWE_KWH1,
+            "HWE-KWH3" => HomeWizardProductType.HWE_KWH3,
+            "SDM230-wifi" => HomeWizardProductType.SDM230_wifi,
+            "SDM630-wifi" => HomeWizardProductType.SDM630_wifi,
+            "HWE-DSP" => HomeWizardProductType.HWE_DSP,
+            "HWE-BAT" => HomeWizardProductType.HWE_BAT,
+            _ => HomeWizardProductType.Unknown
+        };
     }
 }

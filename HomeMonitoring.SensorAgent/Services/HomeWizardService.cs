@@ -93,6 +93,64 @@ public class HomeWizardService : IHomeWizardService
         }
     }
 
+    public async Task<IEnergyDataResponse> GetEnergyDataAsync(string ipAddress, HomeWizardProductType productType, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(5);
+            
+            var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogDebug("Received JSON from {IpAddress} for product {ProductType}: {Json}", ipAddress, productType, json);
+            
+            IEnergyDataResponse? result = productType switch
+            {
+                HomeWizardProductType.HWE_P1 => JsonSerializer.Deserialize<P1MeterResponse>(json, _jsonOptions),
+                HomeWizardProductType.HWE_SKT => JsonSerializer.Deserialize<SocketResponse>(json, _jsonOptions),
+                _ => throw new NotSupportedException($"Product type {productType} is not yet supported")
+            };
+
+            if (result == null)
+            {
+                throw new Exception($"Failed to deserialize energy data from {ipAddress}");
+            }
+
+            return result;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error for energy data from {IpAddress} with product type {ProductType}", 
+                ipAddress, productType);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting energy data from {IpAddress} with product type {ProductType}", 
+                ipAddress, productType);
+            throw;
+        }
+    }
+
+    private static HomeWizardProductType ParseProductType(string productTypeString)
+    {
+        return productTypeString switch
+        {
+            "HWE-P1" => HomeWizardProductType.HWE_P1,
+            "HWE-SKT" => HomeWizardProductType.HWE_SKT,
+            "HWE-WTR" => HomeWizardProductType.HWE_WTR,
+            "HWE-KWH1" => HomeWizardProductType.HWE_KWH1,
+            "HWE-KWH3" => HomeWizardProductType.HWE_KWH3,
+            "SDM230-wifi" => HomeWizardProductType.SDM230_wifi,
+            "SDM630-wifi" => HomeWizardProductType.SDM630_wifi,
+            "HWE-DSP" => HomeWizardProductType.HWE_DSP,
+            "HWE-BAT" => HomeWizardProductType.HWE_BAT,
+            _ => HomeWizardProductType.Unknown
+        };
+    }
+
     public async Task DiscoverDevicesAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting HomeWizard device discovery");
@@ -152,6 +210,17 @@ public class HomeWizardService : IHomeWizardService
             {
                 var deviceInfo = await GetDeviceInfoAsync(ipAddress, cancellationToken);
                 
+                // Parse the product type
+                var productType = ParseProductType(deviceInfo.ProductType);
+                
+                // Check if we support this product type
+                if (productType != HomeWizardProductType.HWE_P1 && productType != HomeWizardProductType.HWE_SKT)
+                {
+                    _logger.LogInformation("Discovered unsupported HomeWizard device type {ProductType} at {IpAddress}", 
+                        deviceInfo.ProductType, ipAddress);
+                    return;
+                }
+                
                 // It's a HomeWizard device, add or update in database
                 var existingDevice = await _dbContext.Devices
                     .FirstOrDefaultAsync(d => d.SerialNumber == deviceInfo.SerialNumber, cancellationToken);
@@ -163,7 +232,8 @@ public class HomeWizardService : IHomeWizardService
                     {
                         Name = deviceInfo.ProductName,
                         IpAddress = ipAddress,
-                        ProductType = deviceInfo.ProductType,
+                        ProductType = productType,
+                        ProductTypeRaw = deviceInfo.ProductType,
                         SerialNumber = deviceInfo.SerialNumber,
                         DiscoveredAt = DateTime.UtcNow,
                         LastSeenAt = DateTime.UtcNow,
@@ -172,17 +242,19 @@ public class HomeWizardService : IHomeWizardService
 
                     _dbContext.Devices.Add(device);
                     await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Discovered new HomeWizard device: {ProductName} at {IpAddress}", 
-                        deviceInfo.ProductName, ipAddress);
+                    _logger.LogInformation("Discovered new HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}", 
+                        deviceInfo.ProductName, productType, ipAddress);
                 }
                 else
                 {
                     // Update existing device
                     existingDevice.IpAddress = ipAddress;
                     existingDevice.LastSeenAt = DateTime.UtcNow;
+                    existingDevice.ProductType = productType;
+                    existingDevice.ProductTypeRaw = deviceInfo.ProductType;
                     await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Updated existing HomeWizard device: {ProductName} at {IpAddress}", 
-                        deviceInfo.ProductName, ipAddress);
+                    _logger.LogInformation("Updated existing HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}", 
+                        deviceInfo.ProductName, productType, ipAddress);
                 }
             }
             catch
