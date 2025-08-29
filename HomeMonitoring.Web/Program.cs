@@ -1,6 +1,5 @@
 using HomeMonitoring.SensorAgent.Data;
 using HomeMonitoring.Web.Hubs;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

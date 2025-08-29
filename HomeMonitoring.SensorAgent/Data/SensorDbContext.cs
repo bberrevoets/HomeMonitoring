@@ -26,7 +26,7 @@ public class SensorDbContext : DbContext
             entity.Property(e => e.SerialNumber).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ProductTypeRaw).HasMaxLength(50);
             entity.HasIndex(e => e.SerialNumber).IsUnique();
-            
+
             // Store ProductType as string in database
             entity.Property(e => e.ProductType)
                 .HasConversion<string>()

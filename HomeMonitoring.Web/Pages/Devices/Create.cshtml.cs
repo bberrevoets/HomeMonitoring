@@ -45,15 +45,15 @@ public class CreateModel : PageModel
             {
                 // Parse the product type
                 var productType = ParseProductType(response.ProductType);
-                
+
                 // Check if we support this product type
                 if (productType != HomeWizardProductType.HWE_P1 && productType != HomeWizardProductType.HWE_SKT)
                 {
-                    ModelState.AddModelError(string.Empty, 
+                    ModelState.AddModelError(string.Empty,
                         $"The device type '{response.ProductType}' is not currently supported. Only HWE-P1 and HWE-SKT devices are supported.");
                     return Page();
                 }
-                
+
                 // Check if device already exists
                 var existingDevice = await _context.Devices
                     .FirstOrDefaultAsync(d => d.SerialNumber == response.SerialNumber);
@@ -108,7 +108,7 @@ public class CreateModel : PageModel
             return Page();
         }
     }
-    
+
     private static HomeWizardProductType ParseProductType(string productTypeString)
     {
         return productTypeString switch

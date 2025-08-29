@@ -8,8 +8,8 @@ namespace HomeMonitoring.SensorAgent;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+    private readonly IServiceProvider _serviceProvider;
 
     public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
     {
@@ -26,11 +26,8 @@ public class Worker : BackgroundService
 
         // Main polling loop
         using var pollingTimer = new PeriodicTimer(_pollingInterval);
-        
-        while (await pollingTimer.WaitForNextTickAsync(stoppingToken))
-        {
-            await PollDevicesAsync(stoppingToken);
-        }
+
+        while (await pollingTimer.WaitForNextTickAsync(stoppingToken)) await PollDevicesAsync(stoppingToken);
     }
 
     private async Task PollDevicesAsync(CancellationToken stoppingToken)
@@ -55,23 +52,22 @@ public class Worker : BackgroundService
             _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
 
             foreach (var device in devices)
-            {
                 try
                 {
                     // Skip unsupported devices
-                    if (device.ProductType != HomeWizardProductType.HWE_P1 && 
+                    if (device.ProductType != HomeWizardProductType.HWE_P1 &&
                         device.ProductType != HomeWizardProductType.HWE_SKT)
                     {
-                        _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}", 
+                        _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}",
                             device.ProductType, device.Name);
                         continue;
                     }
 
                     var energyData = await homeWizardService.GetEnergyDataAsync(
-                        device.IpAddress, 
-                        device.ProductType, 
+                        device.IpAddress,
+                        device.ProductType,
                         stoppingToken);
-                    
+
                     // Store the reading
                     var reading = new EnergyReading
                     {
@@ -86,30 +82,31 @@ public class Worker : BackgroundService
                     };
 
                     dbContext.EnergyReadings.Add(reading);
-                    
+
                     // Update last seen time
                     device.LastSeenAt = DateTime.UtcNow;
-                    
+
                     await dbContext.SaveChangesAsync(stoppingToken);
-                    
-                    _logger.LogInformation("Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W", 
+
+                    _logger.LogInformation(
+                        "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
                         device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
                 }
                 catch (NotSupportedException ex)
                 {
-                    _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}", 
+                    _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
                         device.Name, ex.Message);
-                    
+
                     // Disable unsupported devices to avoid repeated errors
                     device.IsEnabled = false;
                     await dbContext.SaveChangesAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}", 
+                    _logger.LogError(ex,
+                        "Error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
                         device.Name, device.ProductType, device.IpAddress);
                 }
-            }
         }
         catch (Exception ex)
         {

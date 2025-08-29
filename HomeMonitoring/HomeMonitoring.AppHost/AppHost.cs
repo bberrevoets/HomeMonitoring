@@ -1,3 +1,5 @@
+using Projects;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var mailpit = builder.AddMailPit("mailpit")
@@ -15,7 +17,7 @@ var postgres = builder.AddPostgres("postgres")
     .AddDatabase("sensorsdb");
 
 // Add the Web application
-var web = builder.AddProject<Projects.HomeMonitoring_Web>("web")
+var web = builder.AddProject<HomeMonitoring_Web>("web")
     .WaitFor(seq)
     .WaitFor(postgres)
     .WithReference(seq)
@@ -24,7 +26,7 @@ var web = builder.AddProject<Projects.HomeMonitoring_Web>("web")
     .WaitFor(mailpit);
 
 // Add the SensorAgent worker service
-var sensorAgent = builder.AddProject<Projects.HomeMonitoring_SensorAgent>("sensoragent")
+var sensorAgent = builder.AddProject<HomeMonitoring_SensorAgent>("sensoragent")
     .WaitFor(seq)
     .WaitFor(postgres)
     .WithReference(seq)

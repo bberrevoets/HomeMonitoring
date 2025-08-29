@@ -1,21 +1,21 @@
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using HomeMonitoring.SensorAgent.Data;
 using HomeMonitoring.SensorAgent.Models;
 using HomeMonitoring.SensorAgent.Models.HomeWizard;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Http.Json;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Net;
-using System.Text.Json;
 
 namespace HomeMonitoring.SensorAgent.Services;
 
 public class HomeWizardService : IHomeWizardService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly SensorDbContext _dbContext;
-    private readonly ILogger<HomeWizardService> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<HomeWizardService> _logger;
 
     public HomeWizardService(
         IHttpClientFactory httpClientFactory,
@@ -28,27 +28,25 @@ public class HomeWizardService : IHomeWizardService
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
-            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+            NumberHandling = JsonNumberHandling.AllowReadingFromString
         };
     }
 
-    public async Task<DeviceResponse> GetDeviceInfoAsync(string ipAddress, CancellationToken cancellationToken = default)
+    public async Task<DeviceResponse> GetDeviceInfoAsync(string ipAddress,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
-            
+
             var response = await client.GetAsync($"http://{ipAddress}/api", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var result = JsonSerializer.Deserialize<DeviceResponse>(json, _jsonOptions);
 
-            if (result == null)
-            {
-                throw new Exception($"Failed to deserialize device info from {ipAddress}");
-            }
+            if (result == null) throw new Exception($"Failed to deserialize device info from {ipAddress}");
 
             return result;
         }
@@ -59,25 +57,23 @@ public class HomeWizardService : IHomeWizardService
         }
     }
 
-    public async Task<EnergyResponse> GetEnergyDataAsync(string ipAddress, CancellationToken cancellationToken = default)
+    public async Task<EnergyResponse> GetEnergyDataAsync(string ipAddress,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
-            
+
             var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             _logger.LogDebug("Received JSON from {IpAddress}: {Json}", ipAddress, json);
-            
+
             var result = JsonSerializer.Deserialize<EnergyResponse>(json, _jsonOptions);
 
-            if (result == null)
-            {
-                throw new Exception($"Failed to deserialize energy data from {ipAddress}");
-            }
+            if (result == null) throw new Exception($"Failed to deserialize energy data from {ipAddress}");
 
             return result;
         }
@@ -93,19 +89,21 @@ public class HomeWizardService : IHomeWizardService
         }
     }
 
-    public async Task<IEnergyDataResponse> GetEnergyDataAsync(string ipAddress, HomeWizardProductType productType, CancellationToken cancellationToken = default)
+    public async Task<IEnergyDataResponse> GetEnergyDataAsync(string ipAddress, HomeWizardProductType productType,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(5);
-            
+
             var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);
             response.EnsureSuccessStatusCode();
-            
+
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogDebug("Received JSON from {IpAddress} for product {ProductType}: {Json}", ipAddress, productType, json);
-            
+            _logger.LogDebug("Received JSON from {IpAddress} for product {ProductType}: {Json}", ipAddress, productType,
+                json);
+
             IEnergyDataResponse? result = productType switch
             {
                 HomeWizardProductType.HWE_P1 => JsonSerializer.Deserialize<P1MeterResponse>(json, _jsonOptions),
@@ -113,25 +111,51 @@ public class HomeWizardService : IHomeWizardService
                 _ => throw new NotSupportedException($"Product type {productType} is not yet supported")
             };
 
-            if (result == null)
-            {
-                throw new Exception($"Failed to deserialize energy data from {ipAddress}");
-            }
+            if (result == null) throw new Exception($"Failed to deserialize energy data from {ipAddress}");
 
             return result;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "JSON deserialization error for energy data from {IpAddress} with product type {ProductType}", 
+            _logger.LogError(ex,
+                "JSON deserialization error for energy data from {IpAddress} with product type {ProductType}",
                 ipAddress, productType);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting energy data from {IpAddress} with product type {ProductType}", 
+            _logger.LogError(ex, "Error getting energy data from {IpAddress} with product type {ProductType}",
                 ipAddress, productType);
             throw;
         }
+    }
+
+    public async Task DiscoverDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting HomeWizard device discovery");
+
+        // Get local IP to determine network range
+        var localIp = await GetLocalIpAddressAsync();
+        if (localIp == null)
+        {
+            _logger.LogWarning("Could not determine local IP address for discovery");
+            return;
+        }
+
+        var ipParts = localIp.Split('.');
+        var networkPrefix = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}";
+
+        var discoveryTasks = new List<Task>();
+
+        for (var i = 1; i <= 254; i++)
+        {
+            var ip = $"{networkPrefix}.{i}";
+            var task = PingAndCheckDeviceAsync(ip, cancellationToken);
+            discoveryTasks.Add(task);
+        }
+
+        await Task.WhenAll(discoveryTasks);
+        _logger.LogInformation("HomeWizard device discovery completed");
     }
 
     private static HomeWizardProductType ParseProductType(string productTypeString)
@@ -151,44 +175,13 @@ public class HomeWizardService : IHomeWizardService
         };
     }
 
-    public async Task DiscoverDevicesAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Starting HomeWizard device discovery");
-        
-        // Get local IP to determine network range
-        var localIp = await GetLocalIpAddressAsync();
-        if (localIp == null)
-        {
-            _logger.LogWarning("Could not determine local IP address for discovery");
-            return;
-        }
-
-        var ipParts = localIp.Split('.');
-        var networkPrefix = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}";
-        
-        var discoveryTasks = new List<Task>();
-        
-        for (int i = 1; i <= 254; i++)
-        {
-            var ip = $"{networkPrefix}.{i}";
-            var task = PingAndCheckDeviceAsync(ip, cancellationToken);
-            discoveryTasks.Add(task);
-        }
-
-        await Task.WhenAll(discoveryTasks);
-        _logger.LogInformation("HomeWizard device discovery completed");
-    }
-
     private async Task<string?> GetLocalIpAddressAsync()
     {
         var host = await Dns.GetHostEntryAsync(Dns.GetHostName());
         foreach (var ip in host.AddressList)
-        {
             if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
                 return ip.ToString();
-            }
-        }
+
         return null;
     }
 
@@ -199,28 +192,25 @@ public class HomeWizardService : IHomeWizardService
             // First ping to check if device is online
             using var ping = new Ping();
             var reply = await ping.SendPingAsync(ipAddress, 100);
-            
-            if (reply.Status != IPStatus.Success)
-            {
-                return;
-            }
+
+            if (reply.Status != IPStatus.Success) return;
 
             // Try to get device info to check if it's a HomeWizard device
             try
             {
                 var deviceInfo = await GetDeviceInfoAsync(ipAddress, cancellationToken);
-                
+
                 // Parse the product type
                 var productType = ParseProductType(deviceInfo.ProductType);
-                
+
                 // Check if we support this product type
                 if (productType != HomeWizardProductType.HWE_P1 && productType != HomeWizardProductType.HWE_SKT)
                 {
-                    _logger.LogInformation("Discovered unsupported HomeWizard device type {ProductType} at {IpAddress}", 
+                    _logger.LogInformation("Discovered unsupported HomeWizard device type {ProductType} at {IpAddress}",
                         deviceInfo.ProductType, ipAddress);
                     return;
                 }
-                
+
                 // It's a HomeWizard device, add or update in database
                 var existingDevice = await _dbContext.Devices
                     .FirstOrDefaultAsync(d => d.SerialNumber == deviceInfo.SerialNumber, cancellationToken);
@@ -242,7 +232,8 @@ public class HomeWizardService : IHomeWizardService
 
                     _dbContext.Devices.Add(device);
                     await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Discovered new HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}", 
+                    _logger.LogInformation(
+                        "Discovered new HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}",
                         deviceInfo.ProductName, productType, ipAddress);
                 }
                 else
@@ -253,7 +244,8 @@ public class HomeWizardService : IHomeWizardService
                     existingDevice.ProductType = productType;
                     existingDevice.ProductTypeRaw = deviceInfo.ProductType;
                     await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Updated existing HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}", 
+                    _logger.LogInformation(
+                        "Updated existing HomeWizard device: {ProductName} ({ProductType}) at {IpAddress}",
                         deviceInfo.ProductName, productType, ipAddress);
                 }
             }

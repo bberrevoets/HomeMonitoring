@@ -13,34 +13,19 @@ public class NullableIntFromNumberConverter : JsonConverter<int?>
                 return null;
             case JsonTokenType.Number:
                 // Handle both integer and floating-point numbers
-                if (reader.TryGetInt32(out int intValue))
-                {
-                    return intValue;
-                }
-                else if (reader.TryGetDouble(out double doubleValue))
-                {
+                if (reader.TryGetInt32(out var intValue)) return intValue;
+
+                if (reader.TryGetDouble(out var doubleValue))
                     // Round floating-point to nearest integer
                     return (int)Math.Round(doubleValue);
-                }
-                else
-                {
-                    throw new JsonException($"Unable to convert {reader.GetString()} to int?");
-                }
+
+                throw new JsonException($"Unable to convert {reader.GetString()} to int?");
             case JsonTokenType.String:
                 // Handle numbers that come as strings
-                string? stringValue = reader.GetString();
-                if (string.IsNullOrWhiteSpace(stringValue))
-                {
-                    return null;
-                }
-                if (int.TryParse(stringValue, out int parsedInt))
-                {
-                    return parsedInt;
-                }
-                if (double.TryParse(stringValue, out double parsedDouble))
-                {
-                    return (int)Math.Round(parsedDouble);
-                }
+                var stringValue = reader.GetString();
+                if (string.IsNullOrWhiteSpace(stringValue)) return null;
+                if (int.TryParse(stringValue, out var parsedInt)) return parsedInt;
+                if (double.TryParse(stringValue, out var parsedDouble)) return (int)Math.Round(parsedDouble);
                 throw new JsonException($"Unable to convert string '{stringValue}' to int?");
             default:
                 throw new JsonException($"Unexpected token type: {reader.TokenType}");
@@ -50,12 +35,8 @@ public class NullableIntFromNumberConverter : JsonConverter<int?>
     public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
     {
         if (value.HasValue)
-        {
             writer.WriteNumberValue(value.Value);
-        }
         else
-        {
             writer.WriteNullValue();
-        }
     }
 }

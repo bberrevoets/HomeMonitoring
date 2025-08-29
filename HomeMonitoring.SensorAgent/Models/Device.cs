@@ -10,7 +10,7 @@ public class Device
     public required DateTime DiscoveredAt { get; set; }
     public DateTime LastSeenAt { get; set; }
     public bool IsEnabled { get; set; } = true;
-    
+
     // Store the original product type string for reference
     public string? ProductTypeRaw { get; set; }
 }
