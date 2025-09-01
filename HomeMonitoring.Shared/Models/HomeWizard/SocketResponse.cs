@@ -1,4 +1,7 @@
-﻿using System.Text.Json.Serialization;
+﻿// Copyright (c) 2025 Bert Berrevoets
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+
+using System.Text.Json.Serialization;
 using HomeMonitoring.Shared.JsonConverters;
 
 namespace HomeMonitoring.Shared.Models.HomeWizard;

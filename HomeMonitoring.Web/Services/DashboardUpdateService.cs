@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Bert Berrevoets
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+
 using HomeMonitoring.Web.Hubs;
 using HomeMonitoring.Web.Models;
 using Microsoft.AspNetCore.SignalR;
