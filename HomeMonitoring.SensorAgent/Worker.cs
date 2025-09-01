@@ -83,7 +83,7 @@ public class Worker : BackgroundService
 
                     dbContext.EnergyReadings.Add(reading);
 
-                    // Update last seen time
+                    // Update last seen time - device is responding
                     device.LastSeenAt = DateTime.UtcNow;
 
                     await dbContext.SaveChangesAsync(stoppingToken);
@@ -101,10 +101,25 @@ public class Worker : BackgroundService
                     device.IsEnabled = false;
                     await dbContext.SaveChangesAsync(stoppingToken);
                 }
+                catch (TaskCanceledException)
+                {
+                    // This is expected when device is offline or not responding
+                    // Don't update LastSeenAt - let the monitoring service handle alerts
+                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
+                        device.Name, device.ProductType, device.IpAddress);
+                }
+                catch (HttpRequestException)
+                {
+                    // Network errors are expected when device is offline
+                    // Don't update LastSeenAt - let the monitoring service handle alerts
+                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
+                        device.Name, device.ProductType, device.IpAddress);
+                }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex,
-                        "Error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
+                    // Only log actual errors, not expected communication failures
+                    _logger.LogWarning(ex,
+                        "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
                         device.Name, device.ProductType, device.IpAddress);
                 }
         }

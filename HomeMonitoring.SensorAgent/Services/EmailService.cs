@@ -36,7 +36,7 @@ public class EmailService : IEmailService
                              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                              .header { background-color: #dc3545; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
                              .content { background-color: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; border-top: none; }
-                             .device-info { background-color: white; padding: 15پپ0px; border-radius: 8px; margin: 20px 0; }
+                             .device-info { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
                              .info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #dee2e6; }
                              .info-label { font-weight: bold; width: 150px; color: #495057; }
                              .info-value { color: #212529; }
@@ -78,7 +78,7 @@ public class EmailService : IEmailService
                                  <div class='warning-box'>
                                      <strong>⚡ Possible Causes:</strong>
                                      <ul style='margin-bottom: 0;'>
-                                         <li>Device power loss (check powerbank if using a powerbank)</li>
+                                         <li>Device power loss</li>
                                          <li>Network connectivity issues</li>
                                          <li>Device malfunction or crash</li>
                                          <li>IP address changed (DHCP renewal)</li>

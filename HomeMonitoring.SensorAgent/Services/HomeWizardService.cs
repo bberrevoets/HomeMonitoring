@@ -50,6 +50,16 @@ public class HomeWizardService : IHomeWizardService
 
             return result;
         }
+        catch (TaskCanceledException)
+        {
+            _logger.LogDebug("Device at {IpAddress} did not respond within timeout (device info)", ipAddress);
+            throw;
+        }
+        catch (HttpRequestException)
+        {
+            _logger.LogDebug("Device at {IpAddress} is not reachable (device info)", ipAddress);
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting device info from {IpAddress}", ipAddress);
@@ -76,6 +86,16 @@ public class HomeWizardService : IHomeWizardService
             if (result == null) throw new Exception($"Failed to deserialize energy data from {ipAddress}");
 
             return result;
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogDebug("Device at {IpAddress} did not respond within timeout (energy data)", ipAddress);
+            throw;
+        }
+        catch (HttpRequestException)
+        {
+            _logger.LogDebug("Device at {IpAddress} is not reachable (energy data)", ipAddress);
+            throw;
         }
         catch (JsonException ex)
         {
@@ -115,6 +135,20 @@ public class HomeWizardService : IHomeWizardService
 
             return result;
         }
+        catch (TaskCanceledException)
+        {
+            // This is expected when device is offline - don't log as error
+            _logger.LogDebug("Device at {IpAddress} did not respond within timeout for product type {ProductType}",
+                ipAddress, productType);
+            throw;
+        }
+        catch (HttpRequestException)
+        {
+            // Network errors are expected when device is offline - don't log as error
+            _logger.LogDebug("Device at {IpAddress} is not reachable for product type {ProductType}",
+                ipAddress, productType);
+            throw;
+        }
         catch (JsonException ex)
         {
             _logger.LogError(ex,
@@ -122,9 +156,10 @@ public class HomeWizardService : IHomeWizardService
                 ipAddress, productType);
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not NotSupportedException)
         {
-            _logger.LogError(ex, "Error getting energy data from {IpAddress} with product type {ProductType}",
+            _logger.LogError(ex,
+                "Unexpected error getting energy data from {IpAddress} with product type {ProductType}",
                 ipAddress, productType);
             throw;
         }
