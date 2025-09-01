@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace HomeMonitoring.SensorAgent.Models.HomeWizard;
+namespace HomeMonitoring.Shared.Models.HomeWizard;
 
 public record DeviceResponse
 {

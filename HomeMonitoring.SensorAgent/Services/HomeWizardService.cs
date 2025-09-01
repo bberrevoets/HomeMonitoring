@@ -3,9 +3,9 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
-using HomeMonitoring.SensorAgent.Models.HomeWizard;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
+using HomeMonitoring.Shared.Models.HomeWizard;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeMonitoring.SensorAgent.Services;
@@ -289,7 +289,7 @@ public class HomeWizardService : IHomeWizardService
                 // Not a HomeWizard device or not responding to API calls
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Ignore discovery errors for individual devices
         }

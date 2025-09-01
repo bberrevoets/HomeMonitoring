@@ -1,15 +1,14 @@
-using HomeMonitoring.SensorAgent.Data;
+using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Web.Hubs;
-using HomeMonitoring.Web.Services;
 using HomeMonitoring.Web.Models;
+using HomeMonitoring.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults
 builder.AddServiceDefaults();
 
-// Add PostgreSQL
-builder.AddNpgsqlDbContext<SensorDbContext>("sensorsdb");
+builder.AddSqlServerDbContext<SensorDbContext>("sensorsdb");
 
 // Add Razor Pages
 builder.Services.AddRazorPages();

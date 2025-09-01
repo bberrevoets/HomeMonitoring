@@ -1,4 +1,4 @@
-﻿using HomeMonitoring.SensorAgent.Models;
+﻿using HomeMonitoring.Shared.Models;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Options;
 using MimeKit;

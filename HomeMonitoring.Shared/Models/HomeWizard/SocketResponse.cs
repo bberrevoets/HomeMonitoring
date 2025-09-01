@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
-using HomeMonitoring.SensorAgent.JsonConverters;
+using HomeMonitoring.Shared.JsonConverters;
 
-namespace HomeMonitoring.SensorAgent.Models.HomeWizard;
+namespace HomeMonitoring.Shared.Models.HomeWizard;
 
 public record SocketResponse : IEnergyDataResponse
 {

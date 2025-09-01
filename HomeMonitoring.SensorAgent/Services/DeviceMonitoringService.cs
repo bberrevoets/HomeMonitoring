@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 

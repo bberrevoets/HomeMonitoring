@@ -1,5 +1,5 @@
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 

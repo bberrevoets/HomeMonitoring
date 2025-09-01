@@ -1,4 +1,4 @@
-﻿namespace HomeMonitoring.SensorAgent.Models;
+﻿namespace HomeMonitoring.Shared.Models;
 
 public class DeviceStatus
 {

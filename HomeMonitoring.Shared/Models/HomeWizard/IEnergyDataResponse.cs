@@ -1,4 +1,4 @@
-﻿namespace HomeMonitoring.SensorAgent.Models.HomeWizard;
+﻿namespace HomeMonitoring.Shared.Models.HomeWizard;
 
 public interface IEnergyDataResponse
 {

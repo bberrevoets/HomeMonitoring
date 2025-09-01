@@ -1,5 +1,4 @@
 using HomeMonitoring.Web.Hubs;
-using HomeMonitoring.Web.Services;
 using HomeMonitoring.Web.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
@@ -8,9 +7,9 @@ namespace HomeMonitoring.Web.Services;
 
 public class DashboardUpdateService : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<DashboardUpdateService> _logger;
     private readonly DashboardSettings _dashboardSettings;
+    private readonly ILogger<DashboardUpdateService> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     public DashboardUpdateService(
         IServiceProvider serviceProvider,
@@ -25,9 +24,9 @@ public class DashboardUpdateService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var updateInterval = TimeSpan.FromSeconds(_dashboardSettings.UpdateIntervalSeconds);
-        
+
         _logger.LogInformation(
-            "Dashboard update service starting with {UpdateInterval} second intervals", 
+            "Dashboard update service starting with {UpdateInterval} second intervals",
             _dashboardSettings.UpdateIntervalSeconds);
 
         // Add a small delay to allow the application to fully start
@@ -36,7 +35,6 @@ public class DashboardUpdateService : BackgroundService
         using var timer = new PeriodicTimer(updateInterval);
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
-        {
             try
             {
                 _logger.LogInformation("Starting dashboard update cycle");
@@ -47,7 +45,6 @@ public class DashboardUpdateService : BackgroundService
             {
                 _logger.LogError(ex, "Error sending dashboard updates");
             }
-        }
     }
 
     private async Task SendDashboardUpdatesAsync(CancellationToken cancellationToken)
@@ -59,14 +56,14 @@ public class DashboardUpdateService : BackgroundService
         _logger.LogDebug("Retrieving dashboard data");
         var dashboardData = await dashboardService.GetDashboardDataAsync();
 
-        _logger.LogDebug("Sending dashboard update to Dashboard group with {DeviceCount} devices", 
+        _logger.LogDebug("Sending dashboard update to Dashboard group with {DeviceCount} devices",
             dashboardData.Devices.Count);
 
         await hubContext.Clients.Group("Dashboard")
             .SendAsync("ReceiveDashboardUpdate", dashboardData, cancellationToken);
 
         _logger.LogInformation(
-            "Sent dashboard update to Dashboard group - {DeviceCount} devices, {OnlineCount} online", 
+            "Sent dashboard update to Dashboard group - {DeviceCount} devices, {OnlineCount} online",
             dashboardData.Devices.Count,
             dashboardData.Devices.Count(d => d.IsOnline));
     }

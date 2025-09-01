@@ -1,6 +1,6 @@
 // ReSharper disable InconsistentNaming
 
-namespace HomeMonitoring.SensorAgent.Models;
+namespace HomeMonitoring.Shared.Models;
 
 public enum HomeWizardProductType
 {

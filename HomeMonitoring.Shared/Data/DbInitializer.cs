@@ -1,4 +1,8 @@
-namespace HomeMonitoring.SensorAgent.Data;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace HomeMonitoring.Shared.Data;
 
 public class DbInitializer : BackgroundService
 {

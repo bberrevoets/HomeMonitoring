@@ -13,6 +13,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Aspire", "Aspire", "{02EA68
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.Web", "HomeMonitoring.Web\HomeMonitoring.Web.csproj", "{C402A865-2EC3-DC28-EC15-F8391D13391C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.MigrationService", "HomeMonitoring.MigrationService\HomeMonitoring.MigrationService.csproj", "{58A76BB6-3F3A-06D5-82C1-907C959DB095}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeMonitoring.Shared", "HomeMonitoring.Shared\HomeMonitoring.Shared.csproj", "{A143FF03-B03F-72E1-7B7F-BD9415EE624C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{660564AB-5EDC-4D12-B22E-4AD62931D058}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +44,14 @@ Global
 		{C402A865-2EC3-DC28-EC15-F8391D13391C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C402A865-2EC3-DC28-EC15-F8391D13391C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C402A865-2EC3-DC28-EC15-F8391D13391C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58A76BB6-3F3A-06D5-82C1-907C959DB095}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58A76BB6-3F3A-06D5-82C1-907C959DB095}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58A76BB6-3F3A-06D5-82C1-907C959DB095}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58A76BB6-3F3A-06D5-82C1-907C959DB095}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A143FF03-B03F-72E1-7B7F-BD9415EE624C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A143FF03-B03F-72E1-7B7F-BD9415EE624C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A143FF03-B03F-72E1-7B7F-BD9415EE624C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A143FF03-B03F-72E1-7B7F-BD9415EE624C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

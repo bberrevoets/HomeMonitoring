@@ -1,7 +1,7 @@
-using HomeMonitoring.SensorAgent.Models;
+using HomeMonitoring.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace HomeMonitoring.SensorAgent.Data;
+namespace HomeMonitoring.Shared.Data;
 
 public class SensorDbContext : DbContext
 {

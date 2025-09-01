@@ -1,6 +1,6 @@
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
 using HomeMonitoring.SensorAgent.Services;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeMonitoring.SensorAgent;

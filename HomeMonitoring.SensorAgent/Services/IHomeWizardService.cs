@@ -1,5 +1,5 @@
-using HomeMonitoring.SensorAgent.Models;
-using HomeMonitoring.SensorAgent.Models.HomeWizard;
+using HomeMonitoring.Shared.Models;
+using HomeMonitoring.Shared.Models.HomeWizard;
 
 namespace HomeMonitoring.SensorAgent.Services;
 

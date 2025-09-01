@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace HomeMonitoring.SensorAgent.JsonConverters;
+namespace HomeMonitoring.Shared.JsonConverters;
 
 public class NullableIntFromNumberConverter : JsonConverter<int?>
 {

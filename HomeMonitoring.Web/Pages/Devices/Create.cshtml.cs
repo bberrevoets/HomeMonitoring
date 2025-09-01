@@ -1,6 +1,6 @@
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
-using HomeMonitoring.SensorAgent.Models.HomeWizard;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
+using HomeMonitoring.Shared.Models.HomeWizard;
 using HomeMonitoring.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;

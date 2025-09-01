@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.4.1" />
+	  <PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.2.1" />
+	  <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -17,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HomeMonitoring.Shared\HomeMonitoring.Shared.csproj" />
     <ProjectReference Include="..\HomeMonitoring\HomeMonitoring.ServiceDefaults\HomeMonitoring.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\HomeMonitoring.SensorAgent\HomeMonitoring.SensorAgent.csproj" />
   </ItemGroup>
 
 </Project>

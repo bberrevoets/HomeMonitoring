@@ -1,5 +1,5 @@
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
 using HomeMonitoring.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -9,11 +9,11 @@ namespace HomeMonitoring.Web.Services;
 public class DashboardService : IDashboardService
 {
     private readonly SensorDbContext _context;
-    private readonly ILogger<DashboardService> _logger;
     private readonly DashboardSettings _dashboardSettings;
+    private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
-        SensorDbContext context, 
+        SensorDbContext context,
         ILogger<DashboardService> logger,
         IOptions<DashboardSettings> dashboardSettings)
     {
@@ -106,7 +106,7 @@ public class DashboardService : IDashboardService
 
         var t1 = reading.TotalPowerImportT1KWh ?? 0;
         var t2 = reading.TotalPowerImportT2KWh ?? 0;
-        
+
         return t1 + t2 > 0 ? t1 + t2 : null;
     }
 }

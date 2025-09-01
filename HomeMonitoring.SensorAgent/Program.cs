@@ -1,8 +1,7 @@
 using HomeMonitoring.SensorAgent;
-using HomeMonitoring.SensorAgent.Data;
-using HomeMonitoring.SensorAgent.Models;
 using HomeMonitoring.SensorAgent.Services;
-using Microsoft.EntityFrameworkCore;
+using HomeMonitoring.Shared.Data;
+using HomeMonitoring.Shared.Models;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -35,12 +34,7 @@ try
     // Add the service defaults (e.g., logging, configuration, etc.)
     builder.AddServiceDefaults();
 
-    // Add PostgreSQL support
-    builder.AddNpgsqlDataSource("sensorsdb");
-
-    // Register DbContext
-    builder.Services.AddDbContext<SensorDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("sensorsdb")));
+    builder.AddSqlServerDbContext<SensorDbContext>("sensorsdb");
 
     // Configure Email Settings
     builder.Services.Configure<EmailSettings>(options =>
@@ -86,9 +80,6 @@ try
 
     // Register the Device Monitoring service
     builder.Services.AddHostedService<DeviceMonitoringService>();
-
-    // Ensure database is created and migrations are applied
-    builder.Services.AddHostedService<DbInitializer>();
 
     var host = builder.Build();
     host.Run();

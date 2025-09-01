@@ -14,10 +14,12 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="9.4.1" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="9.4.1" />
     <PackageReference Include="Aspire.Hosting.Seq" Version="9.4.1" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="9.4.1" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="9.7.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\HomeMonitoring.MigrationService\HomeMonitoring.MigrationService.csproj" />
     <ProjectReference Include="..\..\HomeMonitoring.SensorAgent\HomeMonitoring.SensorAgent.csproj" />
     <ProjectReference Include="..\..\HomeMonitoring.Web\HomeMonitoring.Web.csproj" />
   </ItemGroup>

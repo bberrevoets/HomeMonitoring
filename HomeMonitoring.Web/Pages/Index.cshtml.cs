@@ -1,13 +1,13 @@
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using HomeMonitoring.Web.Services;
 using HomeMonitoring.Web.Models;
+using HomeMonitoring.Web.Services;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace HomeMonitoring.Web.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
     private readonly IDashboardService _dashboardService;
+    private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(ILogger<IndexModel> logger, IDashboardService dashboardService)
     {
