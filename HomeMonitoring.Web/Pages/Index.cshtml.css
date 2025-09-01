@@ -1,0 +1,39 @@
+﻿.device-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.chart-container {
+    height: 150px;
+    position: relative;
+}
+
+.current-power {
+    font-weight: bold;
+    margin-bottom: 0;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.compact-card {
+    max-height: 300px;
+}
+
+.compact-card .card-header {
+    font-size: 0.9rem;
+}
+
+.compact-card .card-body {
+    font-size: 0.85rem;
+}

@@ -1,5 +1,7 @@
 using HomeMonitoring.SensorAgent.Data;
 using HomeMonitoring.Web.Hubs;
+using HomeMonitoring.Web.Services;
+using HomeMonitoring.Web.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,14 @@ builder.Services.AddSignalR();
 
 // Add HttpClient for device communication
 builder.Services.AddHttpClient();
+
+// Add configuration
+builder.Services.Configure<DashboardSettings>(
+    builder.Configuration.GetSection(DashboardSettings.SectionName));
+
+// Add dashboard services
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddHostedService<DashboardUpdateService>();
 
 var app = builder.Build();
 
