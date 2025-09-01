@@ -16,8 +16,8 @@ var postgres = builder.AddPostgres("postgres")
     .WithDataVolume("homemonitoring-postgres")
     .AddDatabase("sensorsdb");
 
-// Add the Web application
-var web = builder.AddProject<HomeMonitoring_Web>("web")
+// Add the SensorAgent worker service
+var sensorAgent = builder.AddProject<HomeMonitoring_SensorAgent>("sensoragent")
     .WaitFor(seq)
     .WaitFor(postgres)
     .WithReference(seq)
@@ -25,10 +25,11 @@ var web = builder.AddProject<HomeMonitoring_Web>("web")
     .WithReference(mailpit)
     .WaitFor(mailpit);
 
-// Add the SensorAgent worker service
-var sensorAgent = builder.AddProject<HomeMonitoring_SensorAgent>("sensoragent")
+// Add the Web application
+var web = builder.AddProject<HomeMonitoring_Web>("web")
     .WaitFor(seq)
     .WaitFor(postgres)
+    .WaitFor(sensorAgent)
     .WithReference(seq)
     .WithReference(postgres)
     .WithReference(mailpit)
