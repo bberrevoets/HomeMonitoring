@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/HomeMonitoring.SensorAgent/appsettings.Production.json
+/migrations-idempotent.sql
+/HomeMonitoring.Web/appsettings.Production.json

@@ -39,6 +39,7 @@ var sensorAgent = builder.AddProject<HomeMonitoring_SensorAgent>("sensoragent")
 // Add the Web application
 var web = builder.AddProject<HomeMonitoring_Web>("web")
     .WithReference(db)
+    .WithReference(seq)
     .WaitFor(sensorAgent);
 
 builder.Build().Run();

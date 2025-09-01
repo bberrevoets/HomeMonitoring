@@ -29,7 +29,9 @@ try
             options.IncludedData = IncludedData.TraceIdField |
                                    IncludedData.SpanIdField;
         })
-        .WriteTo.Seq(builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341"));
+        .WriteTo.Seq(
+            serverUrl: builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
+            apiKey: builder.Configuration["SeqApiKey"]));
 
     // Add the service defaults (e.g., logging, configuration, etc.)
     builder.AddServiceDefaults();
