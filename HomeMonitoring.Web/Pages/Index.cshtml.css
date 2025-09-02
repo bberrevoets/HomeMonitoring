@@ -1,8 +1,15 @@
-﻿.device-card { transition: transform 0.2s, box-shadow 0.2s; }
+﻿.device-card { 
+    transition: transform 0.2s, box-shadow 0.2s; 
+}
 
 .device-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
+}
+
+/* Dark mode adjustments for device cards */
+[data-bs-theme="dark"] .device-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .chart-container {
@@ -20,6 +27,12 @@
 .card-header {
     background-color: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
+}
+
+/* Dark mode card header styling */
+[data-bs-theme="dark"] .card-header {
+    background-color: var(--bs-secondary-bg);
+    border-bottom-color: var(--bs-border-color);
 }
 
 .compact-card { max-height: 300px; }
