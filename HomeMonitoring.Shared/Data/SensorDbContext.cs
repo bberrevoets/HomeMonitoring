@@ -1,7 +1,4 @@
-// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-using HomeMonitoring.Shared.Models;
+﻿using HomeMonitoring.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace HomeMonitoring.Shared.Data;

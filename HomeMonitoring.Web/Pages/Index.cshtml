@@ -1,297 +1,297 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home";
+	ViewData["Title"] = "Home";
 }
 
 <div class="container-fluid">
-    <h1 class="display-4 mb-4">Energy Dashboard</h1>
-    <p class="lead">Monitor your HomeWizard energy devices in real-time.</p>
+	<h1 class="display-4 mb-4">Energy Dashboard</h1>
+	<p class="lead">Monitor your HomeWizard energy devices in real-time.</p>
 
-    <!-- Connection Status Indicator -->
-    <div class="alert alert-info" id="connection-status" style="display: none;">
-        <span id="connection-text">Connecting to real-time updates...</span>
-    </div>
+	<!-- Connection Status Indicator -->
+	<div class="alert alert-info" id="connection-status" style="display: none;">
+		<span id="connection-text">Connecting to real-time updates...</span>
+	</div>
 
-    @if (Model.DashboardData.Devices.Any())
-    {
-        <div id="dashboard-container" class="row">
-            @foreach (var device in Model.DashboardData.Devices)
-            {
-                <div class="col-xl-4 col-lg-6 col-md-12 mb-3">
-                    <div class="card device-card compact-card" data-device-id="@device.DeviceId">
-                        <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                            <h6 class="card-title mb-0">@device.DeviceName</h6>
-                            <span class="badge @(device.IsOnline ? "bg-success" : "bg-danger")">
-                                @(device.IsOnline ? "Online" : "Offline")
-                            </span>
-                        </div>
-                        <div class="card-body py-2">
-                            <div class="row mb-2">
-                                <div class="col-6">
-                                    <div class="text-center">
-                                        <h4 class="text-primary mb-0 current-power" data-device-id="@device.DeviceId">
-                                            @device.CurrentPowerW.ToString("F0")
-                                        </h4>
-                                        <small class="text-muted">Watts</small>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    @if (device.TotalEnergyKWh.HasValue)
-                                    {
-                                        <div class="text-center">
-                                            <h5 class="text-info mb-0 total-energy" data-device-id="@device.DeviceId">@device.TotalEnergyKWh.Value.ToString("F2")</h5>
-                                            <small class="text-muted">kWh Total</small>
-                                        </div>
-                                    }
-                                    @if (device.TotalGasM3.HasValue)
-                                    {
-                                        <div class="text-center">
-                                            <h5 class="text-warning mb-0 total-gas" data-device-id="@device.DeviceId">@device.TotalGasM3.Value.ToString("F2")</h5>
-                                            <small class="text-muted">m³ Gas</small>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
+	@if (Model.DashboardData.Devices.Any())
+	{
+		<div id="dashboard-container" class="row">
+			@foreach (var device in Model.DashboardData.Devices)
+			{
+				<div class="col-xl-4 col-lg-6 col-md-12 mb-3">
+					<div class="card device-card compact-card" data-device-id="@device.DeviceId">
+						<div class="card-header py-2 d-flex justify-content-between align-items-center">
+							<h6 class="card-title mb-0">@device.DeviceName</h6>
+							<span class="badge @(device.IsOnline ? "bg-success" : "bg-danger")">
+								@(device.IsOnline ? "Online" : "Offline")
+							</span>
+						</div>
+						<div class="card-body py-2">
+							<div class="row mb-2">
+								<div class="col-6">
+									<div class="text-center">
+										<h4 class="text-primary mb-0 current-power" data-device-id="@device.DeviceId">
+											@device.CurrentPowerW.ToString("F0")
+										</h4>
+										<small class="text-muted">Watts</small>
+									</div>
+								</div>
+								<div class="col-6">
+									@if (device.TotalEnergyKWh.HasValue)
+									{
+										<div class="text-center">
+											<h5 class="text-info mb-0 total-energy" data-device-id="@device.DeviceId">@device.TotalEnergyKWh.Value.ToString("F2")</h5>
+											<small class="text-muted">kWh Total</small>
+										</div>
+									}
+									@if (device.TotalGasM3.HasValue)
+									{
+										<div class="text-center">
+											<h5 class="text-warning mb-0 total-gas" data-device-id="@device.DeviceId">@device.TotalGasM3.Value.ToString("F2")</h5>
+											<small class="text-muted">m³ Gas</small>
+										</div>
+									}
+								</div>
+							</div>
 
-                            <div class="mb-2">
-                                <small class="text-muted">@device.ProductType</small><br>
-                                <small class="text-muted">Last update: <span class="last-update" data-device-id="@device.DeviceId">@device.LastUpdate.ToLocalTime().ToString("HH:mm:ss")</span></small>
-                            </div>
+							<div class="mb-2">
+								<small class="text-muted">@device.ProductType</small><br>
+								<small class="text-muted">Last update: <span class="last-update" data-device-id="@device.DeviceId">@device.LastUpdate.ToLocalTime().ToString("HH:mm:ss")</span></small>
+							</div>
 
-                            <div class="chart-container" style="height: 120px;">
-                                <canvas id="chart-@device.DeviceId"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    }
-    else
-    {
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">No Energy Devices Found</h5>
-                        <p class="card-text">You haven't added any HomeWizard devices yet. Click the button below to get started.</p>
-                        <a asp-page="/Devices/Index" class="btn btn-primary">Manage Devices</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
+							<div class="chart-container" style="height: 120px;">
+								<canvas id="chart-@device.DeviceId"></canvas>
+							</div>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	}
+	else
+	{
+		<div class="row justify-content-center">
+			<div class="col-md-6">
+				<div class="card">
+					<div class="card-body text-center">
+						<h5 class="card-title">No Energy Devices Found</h5>
+						<p class="card-text">You haven't added any HomeWizard devices yet. Click the button below to get started.</p>
+						<a asp-page="/Devices/Index" class="btn btn-primary">Manage Devices</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
-    <script>
-        class EnergyDashboard {
-            constructor() {
-                this.charts = new Map();
-                this.connection = null;
-                this.connectionStatusElement = document.getElementById('connection-status');
-                this.connectionTextElement = document.getElementById('connection-text');
-                this.initializeSignalR();
-                this.initializeCharts();
-            }
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+	<script>
+		class EnergyDashboard {
+			constructor() {
+				this.charts = new Map();
+				this.connection = null;
+				this.connectionStatusElement = document.getElementById('connection-status');
+				this.connectionTextElement = document.getElementById('connection-text');
+				this.initializeSignalR();
+				this.initializeCharts();
+			}
 
-            showConnectionStatus(message, isError = false) {
-                this.connectionStatusElement.style.display = 'block';
-                this.connectionStatusElement.className = `alert ${isError ? 'alert-danger' : 'alert-info'}`;
-                this.connectionTextElement.textContent = message;
+			showConnectionStatus(message, isError = false) {
+				this.connectionStatusElement.style.display = 'block';
+				this.connectionStatusElement.className = `alert ${isError ? 'alert-danger' : 'alert-info'}`;
+				this.connectionTextElement.textContent = message;
 
-                if (!isError) {
-                    // Hide success messages after 3 seconds
-                    setTimeout(() => {
-                            this.connectionStatusElement.style.display = 'none';
-                        },
-                        3000);
-                }
-            }
+				if (!isError) {
+					// Hide success messages after 3 seconds
+					setTimeout(() => {
+							this.connectionStatusElement.style.display = 'none';
+						},
+						3000);
+				}
+			}
 
-            async initializeSignalR() {
-                this.connection = new signalR.HubConnectionBuilder()
-                    .withUrl("/energyHub")
-                    .withAutomaticReconnect()
-                    .configureLogging(signalR.LogLevel.Information)
-                    .build();
+			async initializeSignalR() {
+				this.connection = new signalR.HubConnectionBuilder()
+					.withUrl("/energyHub")
+					.withAutomaticReconnect()
+					.configureLogging(signalR.LogLevel.Information)
+					.build();
 
-                this.connection.on("ReceiveDashboardUpdate",
-                    (dashboardData) => {
-                        console.log("Received dashboard update:", dashboardData);
-                        this.updateDashboard(dashboardData);
-                    });
+				this.connection.on("ReceiveDashboardUpdate",
+					(dashboardData) => {
+						console.log("Received dashboard update:", dashboardData);
+						this.updateDashboard(dashboardData);
+					});
 
-                this.connection.on("ReceiveDeviceChartUpdate",
-                    (deviceId, chartData) => {
-                        console.log("Received chart update for device:", deviceId, chartData);
-                        this.updateDeviceChart(deviceId, chartData);
-                    });
+				this.connection.on("ReceiveDeviceChartUpdate",
+					(deviceId, chartData) => {
+						console.log("Received chart update for device:", deviceId, chartData);
+						this.updateDeviceChart(deviceId, chartData);
+					});
 
-                // Fixed the connection event handlers
-                this.connection.onreconnected(() => {
-                    console.log("SignalR reconnected");
-                    this.showConnectionStatus("Reconnected to real-time updates");
-                    // Rejoin the dashboard group after reconnection
-                    this.connection.invoke("JoinDashboard").catch(err => console.error("Failed to rejoin dashboard:", err));
-                });
+				// Fixed the connection event handlers
+				this.connection.onreconnected(() => {
+					console.log("SignalR reconnected");
+					this.showConnectionStatus("Reconnected to real-time updates");
+					// Rejoin the dashboard group after reconnection
+					this.connection.invoke("JoinDashboard").catch(err => console.error("Failed to rejoin dashboard:", err));
+				});
 
-                this.connection.onreconnecting((error) => {
-                    console.log("SignalR reconnecting", error);
-                    this.showConnectionStatus("Reconnecting to real-time updates...", true);
-                });
+				this.connection.onreconnecting((error) => {
+					console.log("SignalR reconnecting", error);
+					this.showConnectionStatus("Reconnecting to real-time updates...", true);
+				});
 
-                this.connection.onclose((error) => {
-                    console.error("SignalR connection closed:", error);
-                    this.showConnectionStatus("Lost connection to real-time updates", true);
-                });
+				this.connection.onclose((error) => {
+					console.error("SignalR connection closed:", error);
+					this.showConnectionStatus("Lost connection to real-time updates", true);
+				});
 
-                try {
-                    await this.connection.start();
-                    console.log("SignalR connection started, state:", this.connection.state);
-                    await this.connection.invoke("JoinDashboard");
-                    console.log("Joined Dashboard group");
-                    this.showConnectionStatus("Connected to real-time updates");
-                } catch (err) {
-                    console.error("Error connecting to energy hub:", err);
-                    this.showConnectionStatus("Failed to connect to real-time updates", true);
-                }
-            }
+				try {
+					await this.connection.start();
+					console.log("SignalR connection started, state:", this.connection.state);
+					await this.connection.invoke("JoinDashboard");
+					console.log("Joined Dashboard group");
+					this.showConnectionStatus("Connected to real-time updates");
+				} catch (err) {
+					console.error("Error connecting to energy hub:", err);
+					this.showConnectionStatus("Failed to connect to real-time updates", true);
+				}
+			}
 
-            initializeCharts() {
-                @foreach (var device in Model.DashboardData.Devices)
-                {
-                    <text>
-                        this.createChart(@device.DeviceId, @Html.Raw(Json.Serialize(device.ChartData)));
-                    </text>
-                }
-            }
+			initializeCharts() {
+				@foreach (var device in Model.DashboardData.Devices)
+				{
+					<text>
+						this.createChart(@device.DeviceId, @Html.Raw(Json.Serialize(device.ChartData)));
+					</text>
+				}
+			}
 
-            createChart(deviceId, initialData) {
-                const ctx = document.getElementById(`chart-${deviceId}`);
-                if (!ctx) return;
+			createChart(deviceId, initialData) {
+				const ctx = document.getElementById(`chart-${deviceId}`);
+				if (!ctx) return;
 
-                const chart = new Chart(ctx,
-                    {
-                        type: 'line',
-                        data: {
-                            labels: initialData.map(d => new Date(d.timestamp).toLocaleTimeString()),
-                            datasets: [
-                                {
-                                    label: 'Power (W)',
-                                    data: initialData.map(d => d.powerW),
-                                    borderColor: 'rgb(75, 192, 192)',
-                                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                                    tension: 0.1,
-                                    fill: true
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        font: {
-                                            size: 9
-                                        }
-                                    }
-                                },
-                                x: {
-                                    ticks: {
-                                        font: {
-                                            size: 9
-                                        },
-                                        maxTicksLimit: 5
-                                    }
-                                }
-                            },
-                            elements: {
-                                point: {
-                                    radius: 1
-                                },
-                                line: {
-                                    borderWidth: 2
-                                }
-                            }
-                        },
-                    });
+				const chart = new Chart(ctx,
+					{
+						type: 'line',
+						data: {
+							labels: initialData.map(d => new Date(d.timestamp).toLocaleTimeString()),
+							datasets: [
+								{
+									label: 'Power (W)',
+									data: initialData.map(d => d.powerW),
+									borderColor: 'rgb(75, 192, 192)',
+									backgroundColor: 'rgba(75, 192, 192, 0.1)',
+									tension: 0.1,
+									fill: true
+								}
+							]
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							plugins: {
+								legend: {
+									display: false
+								}
+							},
+							scales: {
+								y: {
+									beginAtZero: true,
+									ticks: {
+										font: {
+											size: 9
+										}
+									}
+								},
+								x: {
+									ticks: {
+										font: {
+											size: 9
+										},
+										maxTicksLimit: 5
+									}
+								}
+							},
+							elements: {
+								point: {
+									radius: 1
+								},
+								line: {
+									borderWidth: 2
+								}
+							}
+						}
+					});
 
-                this.charts.set(deviceId, chart);
-            }
+				this.charts.set(deviceId, chart);
+			}
 
-            updateDashboard(dashboardData) {
-                console.log("Updating dashboard with data:", dashboardData);
+			updateDashboard(dashboardData) {
+				console.log("Updating dashboard with data:", dashboardData);
 
-                dashboardData.devices.forEach(device => {
-                    console.log("Updating device:", device.deviceId, "Power:", device.currentPowerW);
+				dashboardData.devices.forEach(device => {
+					console.log("Updating device:", device.deviceId, "Power:", device.currentPowerW);
 
-                    // Update current power
-                    const powerElement = document.querySelector(`.current-power[data-device-id="${device.deviceId}"]`);
-                    if (powerElement) {
-                        powerElement.textContent = device.currentPowerW.toFixed(0);
-                    }
+					// Update current power
+					const powerElement = document.querySelector(`.current-power[data-device-id="${device.deviceId}"]`);
+					if (powerElement) {
+						powerElement.textContent = device.currentPowerW.toFixed(0);
+					}
 
-                    // Update total energy
-                    const energyElement = document.querySelector(`.total-energy[data-device-id="${device.deviceId}"]`);
-                    if (energyElement && device.totalEnergyKWh) {
-                        energyElement.textContent = device.totalEnergyKWh.toFixed(2);
-                    }
+					// Update total energy
+					const energyElement = document.querySelector(`.total-energy[data-device-id="${device.deviceId}"]`);
+					if (energyElement && device.totalEnergyKWh) {
+						energyElement.textContent = device.totalEnergyKWh.toFixed(2);
+					}
 
-                    // Update total gas
-                    const gasElement = document.querySelector(`.total-gas[data-device-id="${device.deviceId}"]`);
-                    if (gasElement && device.totalGasM3) {
-                        gasElement.textContent = device.totalGasM3.toFixed(2);
-                    }
+					// Update total gas
+					const gasElement = document.querySelector(`.total-gas[data-device-id="${device.deviceId}"]`);
+					if (gasElement && device.totalGasM3) {
+						gasElement.textContent = device.totalGasM3.toFixed(2);
+					}
 
-                    // Update last update time
-                    const lastUpdateElement = document.querySelector(`.last-update[data-device-id="${device.deviceId}"]`);
-                    if (lastUpdateElement) {
-                        const updateTime = new Date(device.lastUpdate);
-                        lastUpdateElement.textContent = updateTime.toLocaleTimeString();
-                    }
+					// Update last update time
+					const lastUpdateElement = document.querySelector(`.last-update[data-device-id="${device.deviceId}"]`);
+					if (lastUpdateElement) {
+						const updateTime = new Date(device.lastUpdate);
+						lastUpdateElement.textContent = updateTime.toLocaleTimeString();
+					}
 
-                    // Update online status
-                    const card = document.querySelector(`.device-card[data-device-id="${device.deviceId}"]`);
-                    if (card) {
-                        const badge = card.querySelector('.badge');
-                        if (badge) {
-                            badge.className = `badge ${device.isOnline ? 'bg-success' : 'bg-danger'}`;
-                            badge.textContent = device.isOnline ? 'Online' : 'Offline';
-                        }
-                    }
+					// Update online status
+					const card = document.querySelector(`.device-card[data-device-id="${device.deviceId}"]`);
+					if (card) {
+						const badge = card.querySelector('.badge');
+						if (badge) {
+							badge.className = `badge ${device.isOnline ? 'bg-success' : 'bg-danger'}`;
+							badge.textContent = device.isOnline ? 'Online' : 'Offline';
+						}
+					}
 
-                    // Update chart
-                    if (device.chartData) {
-                        this.updateDeviceChart(device.deviceId, device.chartData);
-                    }
-                });
-            }
+					// Update chart
+					if (device.chartData) {
+						this.updateDeviceChart(device.deviceId, device.chartData);
+					}
+				});
+			}
 
-            updateDeviceChart(deviceId, chartData) {
-                const chart = this.charts.get(deviceId);
-                if (!chart) return;
+			updateDeviceChart(deviceId, chartData) {
+				const chart = this.charts.get(deviceId);
+				if (!chart) return;
 
-                chart.data.labels = chartData.map(d => new Date(d.timestamp).toLocaleTimeString());
-                chart.data.datasets[0].data = chartData.map(d => d.powerW);
-                chart.update('none');
-            }
-        }
+				chart.data.labels = chartData.map(d => new Date(d.timestamp).toLocaleTimeString());
+				chart.data.datasets[0].data = chartData.map(d => d.powerW);
+				chart.update('none');
+			}
+		}
 
-// Initialize dashboard when page loads
-        document.addEventListener('DOMContentLoaded',
-            () => {
-                new EnergyDashboard();
-            });
-    </script>
+		// Initialize dashboard when page loads
+		document.addEventListener('DOMContentLoaded',
+			() => {
+				const energyDashboard = new EnergyDashboard();
+			});
+	</script>
 }

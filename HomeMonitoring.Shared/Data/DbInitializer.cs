@@ -1,12 +1,10 @@
-// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace HomeMonitoring.Shared.Data;
 
+// ReSharper disable once UnusedType.Global
 public class DbInitializer : BackgroundService
 {
     private readonly ILogger<DbInitializer> _logger;

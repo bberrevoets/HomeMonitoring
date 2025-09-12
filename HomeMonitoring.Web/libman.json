@@ -11,12 +11,9 @@
       "destination": "wwwroot/lib/bootstrap/"
     },
     {
-      "library": "microsoft-signalr@8.0.0",
-      "destination": "wwwroot/lib/microsoft-signalr/",
-      "files": [
-        "signalr.min.js",
-        "signalr.js"
-      ]
+      "provider": "cdnjs",
+      "library": "microsoft-signalr@9.0.6",
+      "destination": "wwwroot/lib/microsoft-signalr/"
     }
   ]
 }

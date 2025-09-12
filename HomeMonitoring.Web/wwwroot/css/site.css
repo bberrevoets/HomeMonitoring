@@ -22,28 +22,23 @@ body { margin-bottom: 60px; }
 }
 
 /* Theme toggle button styling */
-#theme-toggle {
-    transition: all 0.3s ease;
-}
 
-#theme-toggle:hover {
-    transform: scale(1.05);
-}
+#theme-toggle { transition: all 0.3s ease; }
+
+#theme-toggle:hover { transform: scale(1.05); }
 
 #theme-icon {
-    transition: transform 0.3s ease;
     font-size: 1rem;
+    transition: transform 0.3s ease;
 }
 
 /* Selective transitions - exclude elements that need hover effects */
-body, .navbar, .footer {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
+
+body, .navbar, .footer { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
 
 /* Device card styles - preserve original hover effects */
-.device-card { 
-    transition: transform 0.2s, box-shadow 0.2s; 
-}
+
+.device-card { transition: transform 0.2s, box-shadow 0.2s; }
 
 .device-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -51,11 +46,11 @@ body, .navbar, .footer {
 }
 
 /* Dark mode device card hover adjustments */
-[data-bs-theme="dark"] .device-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+
+[data-bs-theme="dark"] .device-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
 /* Chart container and other card styles */
+
 .chart-container {
     height: 150px;
     position: relative;
@@ -74,6 +69,7 @@ body, .navbar, .footer {
 }
 
 /* Dark mode card header */
+
 [data-bs-theme="dark"] .card-header {
     background-color: var(--bs-dark);
     border-bottom-color: var(--bs-border-color-translucent);
@@ -86,6 +82,7 @@ body, .navbar, .footer {
 .compact-card .card-body { font-size: 0.85rem; }
 
 /* Ensure navbar adapts to theme */
+
 [data-bs-theme="dark"] .navbar-light {
     --bs-navbar-color: rgba(255, 255, 255, 0.55);
     --bs-navbar-hover-color: rgba(255, 255, 255, 0.75);
@@ -96,45 +93,38 @@ body, .navbar, .footer {
     border-color: var(--bs-border-color-translucent) !important;
 }
 
-[data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link {
-    color: rgba(255, 255, 255, 0.75) !important;
-}
+[data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link { color: rgba(255, 255, 255, 0.75) !important; }
 
-[data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover {
-    color: #fff !important;
-}
+[data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover { color: #fff !important; }
 
 /* Fix navbar brand color in dark mode */
-[data-bs-theme="dark"] .navbar-brand {
-    color: #fff !important;
-}
 
-[data-bs-theme="dark"] .navbar-brand:hover {
-    color: rgba(255, 255, 255, 0.9) !important;
-}
+[data-bs-theme="dark"] .navbar-brand { color: #fff !important; }
+
+[data-bs-theme="dark"] .navbar-brand:hover { color: rgba(255, 255, 255, 0.9) !important; }
 
 /* Footer styling for dark mode */
+
 [data-bs-theme="dark"] .footer {
     background-color: var(--bs-dark);
     border-color: var(--bs-border-color-translucent) !important;
 }
 
 /* Footer links in dark mode */
-[data-bs-theme="dark"] .footer a {
-    color: var(--bs-link-color) !important;
-}
 
-[data-bs-theme="dark"] .footer a:hover {
-    color: var(--bs-link-hover-color) !important;
-}
+[data-bs-theme="dark"] .footer a { color: var(--bs-link-color) !important; }
+
+[data-bs-theme="dark"] .footer a:hover { color: var(--bs-link-hover-color) !important; }
 
 /* Body background for smooth transitions */
+
 body {
     background-color: var(--bs-body-bg);
     color: var(--bs-body-color);
 }
 
 /* Ensure buttons and links work properly in dark mode */
+
 [data-bs-theme="dark"] .btn-primary {
     --bs-btn-color: #fff;
     --bs-btn-bg: #0d6efd;
@@ -171,6 +161,7 @@ body {
 }
 
 /* Ensure alert styling works in dark mode */
+
 [data-bs-theme="dark"] .alert-info {
     --bs-alert-color: #055160;
     --bs-alert-bg: #d1ecf1;
@@ -184,21 +175,18 @@ body {
 }
 
 /* Table styling for dark mode */
+
 [data-bs-theme="dark"] .table {
     --bs-table-bg: var(--bs-body-bg);
     --bs-table-color: var(--bs-body-color);
 }
 
 /* Fix general link colors in dark mode */
-[data-bs-theme="dark"] a {
-    color: #6ea8fe !important;
-}
 
-[data-bs-theme="dark"] a:hover {
-    color: #9ec5fe !important;
-}
+[data-bs-theme="dark"] a { color: #6ea8fe !important; }
+
+[data-bs-theme="dark"] a:hover { color: #9ec5fe !important; }
 
 /* Make sure button links are still properly styled */
-[data-bs-theme="dark"] .btn {
-    color: var(--bs-btn-color) !important;
-}
+
+[data-bs-theme="dark"] .btn { color: var(--bs-btn-color) !important; }

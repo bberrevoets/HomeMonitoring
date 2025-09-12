@@ -1,4 +1,4 @@
-using HomeMonitoring.Web.Models;
+﻿using HomeMonitoring.Web.Models;
 using Microsoft.AspNetCore.SignalR;
 
 namespace HomeMonitoring.Web.Hubs;

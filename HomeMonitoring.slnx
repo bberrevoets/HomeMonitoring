@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/Aspire/">
+    <Project Path="AppHost/AppHost.csproj" />
+    <Project Path="ServiceDefaults/ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/Docs/">
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Helpers/">
+    <Project Path="HomeMonitoring.MigrationService/HomeMonitoring.MigrationService.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="HomeMonitoring.Shared/HomeMonitoring.Shared.csproj" />
+  </Folder>
+  <Project Path="HomeMonitoring.SensorAgent/HomeMonitoring.SensorAgent.csproj" />
+  <Project Path="HomeMonitoring.Web/HomeMonitoring.Web.csproj" />
+</Solution>

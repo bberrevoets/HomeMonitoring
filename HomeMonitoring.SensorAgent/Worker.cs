@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using HomeMonitoring.SensorAgent.Metrics;
 using HomeMonitoring.SensorAgent.Services;
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Shared.Models;
@@ -8,13 +10,15 @@ namespace HomeMonitoring.SensorAgent;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly SensorAgentMetrics _metrics;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
     private readonly IServiceProvider _serviceProvider;
 
-    public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
+    public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, SensorAgentMetrics metrics)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _metrics = metrics;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -52,6 +56,8 @@ public class Worker : BackgroundService
             _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
 
             foreach (var device in devices)
+            {
+                var stopwatch = Stopwatch.StartNew();
                 try
                 {
                     // Skip unsupported devices
@@ -88,12 +94,17 @@ public class Worker : BackgroundService
 
                     await dbContext.SaveChangesAsync(stoppingToken);
 
+                    // Record successful metrics
+                    _metrics.IncrementSensorReadingsProcessed();
+                    _metrics.RecordProcessingTime(stopwatch.Elapsed.TotalSeconds);
+
                     _logger.LogInformation(
                         "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
                         device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
                 }
                 catch (NotSupportedException ex)
                 {
+                    _metrics.IncrementDeviceErrors();
                     _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
                         device.Name, ex.Message);
 
@@ -103,6 +114,7 @@ public class Worker : BackgroundService
                 }
                 catch (TaskCanceledException)
                 {
+                    _metrics.IncrementDeviceErrors();
                     // This is expected when device is offline or not responding
                     // Don't update LastSeenAt - let the monitoring service handle alerts
                     _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
@@ -110,6 +122,7 @@ public class Worker : BackgroundService
                 }
                 catch (HttpRequestException)
                 {
+                    _metrics.IncrementDeviceErrors();
                     // Network errors are expected when device is offline
                     // Don't update LastSeenAt - let the monitoring service handle alerts
                     _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
@@ -117,11 +130,17 @@ public class Worker : BackgroundService
                 }
                 catch (Exception ex)
                 {
+                    _metrics.IncrementDeviceErrors();
                     // Only log actual errors, not expected communication failures
                     _logger.LogWarning(ex,
                         "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
                         device.Name, device.ProductType, device.IpAddress);
                 }
+                finally
+                {
+                    stopwatch.Stop();
+                }
+            }
         }
         catch (Exception ex)
         {
