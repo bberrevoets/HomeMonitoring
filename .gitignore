@@ -364,6 +364,3 @@ FodyWeavers.xsd
 /HomeMonitoring.SensorAgent/appsettings.Production.json
 /migrations-idempotent.sql
 /HomeMonitoring.Web/appsettings.Production.json
-
-
-/HomeMonitoring.Web/wwwroot/lib/
