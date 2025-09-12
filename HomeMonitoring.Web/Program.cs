@@ -1,10 +1,8 @@
-// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Web.Hubs;
 using HomeMonitoring.Web.Models;
 using HomeMonitoring.Web.Services;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 
@@ -33,7 +31,7 @@ try
                                    IncludedData.SpanIdField;
         })
         .WriteTo.Seq(
-            serverUrl: builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
+            builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
             apiKey: builder.Configuration["SeqApiKey"]));
 
     // Add service defaults
@@ -53,6 +51,29 @@ try
     // Add configuration
     builder.Services.Configure<DashboardSettings>(
         builder.Configuration.GetSection(DashboardSettings.SectionName));
+
+    // Add additional health checks beyond the defaults
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            builder.Configuration.GetConnectionString("sensorsdb")!,
+            name: "sql-server",
+            tags: ["db", "ready"])
+        .AddCheck("signalr", () => HealthCheckResult.Healthy("SignalR is operational"), ["signalr", "ready"]);
+
+    // Add Health Checks UI - only monitoring this service
+    builder.Services.AddHealthChecksUI(opt =>
+        {
+            opt.SetEvaluationTimeInSeconds(30); // Check every 30 seconds
+            opt.MaximumHistoryEntriesPerEndpoint(60); // Keep 60 history entries
+            opt.SetApiMaxActiveRequests(1);
+
+            // Only add the current application health check endpoint
+            opt.AddHealthCheckEndpoint("HomeMonitoring Web", "/health");
+
+            // Note: In Aspire environments, each service manages its own health checks
+            // Use the Aspire dashboard to monitor overall application health across services
+        })
+        .AddInMemoryStorage();
 
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -78,6 +99,13 @@ try
     app.MapRazorPages();
     app.MapHub<EnergyHub>("/energyHub");
     app.MapDefaultEndpoints();
+
+    // Map Health Checks UI
+    app.MapHealthChecksUI(options =>
+    {
+        options.UIPath = "/health-ui"; // UI at /health-ui
+        options.ApiPath = "/health-ui-api"; // API at /health-ui-api
+    });
 
     app.Run();
 }

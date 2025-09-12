@@ -1,20 +1,17 @@
-// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-namespace HomeMonitoring.Shared.Models;
+﻿namespace HomeMonitoring.Shared.Models;
 
 public class EnergyReading
 {
-    public int Id { get; set; }
-    public int DeviceId { get; set; }
-    public DateTime Timestamp { get; set; }
-    public double ActivePowerW { get; set; }
-    public double? TotalPowerImportT1KWh { get; set; }
-    public double? TotalPowerImportT2KWh { get; set; }
-    public double? TotalPowerExportT1KWh { get; set; }
-    public double? TotalPowerExportT2KWh { get; set; }
-    public double? TotalGasM3 { get; set; }
+    public int Id { get; init; }
+    public int DeviceId { get; init; }
+    public DateTime Timestamp { get; init; }
+    public double ActivePowerW { get; init; }
+    public double? TotalPowerImportT1KWh { get; init; }
+    public double? TotalPowerImportT2KWh { get; init; }
+    public double? TotalPowerExportT1KWh { get; init; }
+    public double? TotalPowerExportT2KWh { get; init; }
+    public double? TotalGasM3 { get; init; }
 
     // Navigation property
-    public Device? Device { get; set; }
+    public Device? Device { get; init; }
 }

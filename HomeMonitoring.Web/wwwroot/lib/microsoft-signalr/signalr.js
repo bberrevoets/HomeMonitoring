@@ -61,26 +61,26 @@ __webpack_require__.r(__webpack_exports__);
 
 // EXPORTS
 __webpack_require__.d(__webpack_exports__, {
-  "AbortError": () => (/* reexport */ AbortError),
-  "DefaultHttpClient": () => (/* reexport */ DefaultHttpClient),
-  "HttpClient": () => (/* reexport */ HttpClient),
-  "HttpError": () => (/* reexport */ HttpError),
-  "HttpResponse": () => (/* reexport */ HttpResponse),
-  "HttpTransportType": () => (/* reexport */ HttpTransportType),
-  "HubConnection": () => (/* reexport */ HubConnection),
-  "HubConnectionBuilder": () => (/* reexport */ HubConnectionBuilder),
-  "HubConnectionState": () => (/* reexport */ HubConnectionState),
-  "JsonHubProtocol": () => (/* reexport */ JsonHubProtocol),
-  "LogLevel": () => (/* reexport */ LogLevel),
-  "MessageType": () => (/* reexport */ MessageType),
-  "NullLogger": () => (/* reexport */ NullLogger),
-  "Subject": () => (/* reexport */ Subject),
-  "TimeoutError": () => (/* reexport */ TimeoutError),
-  "TransferFormat": () => (/* reexport */ TransferFormat),
-  "VERSION": () => (/* reexport */ VERSION)
+  AbortError: () => (/* reexport */ AbortError),
+  DefaultHttpClient: () => (/* reexport */ DefaultHttpClient),
+  HttpClient: () => (/* reexport */ HttpClient),
+  HttpError: () => (/* reexport */ HttpError),
+  HttpResponse: () => (/* reexport */ HttpResponse),
+  HttpTransportType: () => (/* reexport */ HttpTransportType),
+  HubConnection: () => (/* reexport */ HubConnection),
+  HubConnectionBuilder: () => (/* reexport */ HubConnectionBuilder),
+  HubConnectionState: () => (/* reexport */ HubConnectionState),
+  JsonHubProtocol: () => (/* reexport */ JsonHubProtocol),
+  LogLevel: () => (/* reexport */ LogLevel),
+  MessageType: () => (/* reexport */ MessageType),
+  NullLogger: () => (/* reexport */ NullLogger),
+  Subject: () => (/* reexport */ Subject),
+  TimeoutError: () => (/* reexport */ TimeoutError),
+  TransferFormat: () => (/* reexport */ TransferFormat),
+  VERSION: () => (/* reexport */ VERSION)
 });
 
-;// CONCATENATED MODULE: ./src/Errors.ts
+;// ./src/Errors.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /** Error thrown when an HTTP request fails. */
@@ -215,7 +215,7 @@ class AggregateErrors extends Error {
     }
 }
 
-;// CONCATENATED MODULE: ./src/HttpClient.ts
+;// ./src/HttpClient.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /** Represents an HTTP response. */
@@ -263,7 +263,7 @@ class HttpClient {
     }
 }
 
-;// CONCATENATED MODULE: ./src/ILogger.ts
+;// ./src/ILogger.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // These values are designed to match the ASP.NET Log Levels since that's the pattern we're emulating here.
@@ -289,7 +289,7 @@ var LogLevel;
     LogLevel[LogLevel["None"] = 6] = "None";
 })(LogLevel || (LogLevel = {}));
 
-;// CONCATENATED MODULE: ./src/Loggers.ts
+;// ./src/Loggers.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /** A logger that does nothing when log messages are sent to it. */
@@ -303,14 +303,18 @@ class NullLogger {
 /** The singleton instance of the {@link @microsoft/signalr.NullLogger}. */
 NullLogger.instance = new NullLogger();
 
-;// CONCATENATED MODULE: ./src/Utils.ts
+;// ./src/pkg-version.ts
+const VERSION = '9.0.6';
+
+;// ./src/Utils.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 
+
 // Version token that will be replaced by the prepack command
 /** The version of the SignalR client. */
-const VERSION = "8.0.0";
+
 /** @private */
 class Arg {
     static isRequired(val, name) {
@@ -552,30 +556,9 @@ function getGlobalThis() {
     throw new Error("could not find global");
 }
 
-;// CONCATENATED MODULE: ./src/DynamicImports.browser.ts
+;// ./src/FetchHttpClient.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-/** @private */
-function configureFetch() {
-    return false;
-}
-/** @private */
-function configureAbortController() {
-    return false;
-}
-/** @private */
-function getWS() {
-    throw new Error("Trying to import 'ws' in the browser.");
-}
-/** @private */
-function getEventSource() {
-    throw new Error("Trying to import 'eventsource' in the browser.");
-}
-
-;// CONCATENATED MODULE: ./src/FetchHttpClient.ts
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
 
 
 
@@ -584,19 +567,37 @@ class FetchHttpClient extends HttpClient {
     constructor(logger) {
         super();
         this._logger = logger;
-        // This is how you do "reference" arguments
-        const fetchObj = { _fetchType: undefined, _jar: undefined };
-        if (configureFetch(fetchObj)) {
-            this._fetchType = fetchObj._fetchType;
-            this._jar = fetchObj._jar;
+        // Node added a fetch implementation to the global scope starting in v18.
+        // We need to add a cookie jar in node to be able to share cookies with WebSocket
+        if (typeof fetch === "undefined" || Platform.isNode) {
+            // In order to ignore the dynamic require in webpack builds we need to do this magic
+            // @ts-ignore: TS doesn't know about these names
+            const requireFunc =  true ? require : 0;
+            // Cookies aren't automatically handled in Node so we need to add a CookieJar to preserve cookies across requests
+            this._jar = new (requireFunc("tough-cookie")).CookieJar();
+            if (typeof fetch === "undefined") {
+                this._fetchType = requireFunc("node-fetch");
+            }
+            else {
+                // Use fetch from Node if available
+                this._fetchType = fetch;
+            }
+            // node-fetch doesn't have a nice API for getting and setting cookies
+            // fetch-cookie will wrap a fetch implementation with a default CookieJar or a provided one
+            this._fetchType = requireFunc("fetch-cookie")(this._fetchType, this._jar);
         }
         else {
             this._fetchType = fetch.bind(getGlobalThis());
         }
-        this._abortControllerType = AbortController;
-        const abortObj = { _abortControllerType: this._abortControllerType };
-        if (configureAbortController(abortObj)) {
-            this._abortControllerType = abortObj._abortControllerType;
+        if (typeof AbortController === "undefined") {
+            // In order to ignore the dynamic require in webpack builds we need to do this magic
+            // @ts-ignore: TS doesn't know about these names
+            const requireFunc =  true ? require : 0;
+            // Node needs EventListener methods on AbortController which our custom polyfill doesn't provide
+            this._abortControllerType = requireFunc("abort-controller");
+        }
+        else {
+            this._abortControllerType = AbortController;
         }
     }
     /** @inheritDoc */
@@ -712,7 +713,7 @@ function deserializeContent(response, responseType) {
     return content;
 }
 
-;// CONCATENATED MODULE: ./src/XhrHttpClient.ts
+;// ./src/XhrHttpClient.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -796,7 +797,7 @@ class XhrHttpClient extends HttpClient {
     }
 }
 
-;// CONCATENATED MODULE: ./src/DefaultHttpClient.ts
+;// ./src/DefaultHttpClient.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -838,7 +839,7 @@ class DefaultHttpClient extends HttpClient {
     }
 }
 
-;// CONCATENATED MODULE: ./src/TextMessageFormat.ts
+;// ./src/TextMessageFormat.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // Not exported from index
@@ -859,7 +860,7 @@ class TextMessageFormat {
 TextMessageFormat.RecordSeparatorCode = 0x1e;
 TextMessageFormat.RecordSeparator = String.fromCharCode(TextMessageFormat.RecordSeparatorCode);
 
-;// CONCATENATED MODULE: ./src/HandshakeProtocol.ts
+;// ./src/HandshakeProtocol.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -911,7 +912,7 @@ class HandshakeProtocol {
     }
 }
 
-;// CONCATENATED MODULE: ./src/IHubProtocol.ts
+;// ./src/IHubProtocol.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /** Defines the type of a Hub Message. */
@@ -935,7 +936,7 @@ var MessageType;
     MessageType[MessageType["Sequence"] = 9] = "Sequence";
 })(MessageType || (MessageType = {}));
 
-;// CONCATENATED MODULE: ./src/Subject.ts
+;// ./src/Subject.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -969,7 +970,7 @@ class Subject {
     }
 }
 
-;// CONCATENATED MODULE: ./src/MessageBuffer.ts
+;// ./src/MessageBuffer.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -1164,7 +1165,7 @@ class BufferedItem {
     }
 }
 
-;// CONCATENATED MODULE: ./src/HubConnection.ts
+;// ./src/HubConnection.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -1615,8 +1616,10 @@ class HubConnection {
                 }
                 switch (message.type) {
                     case MessageType.Invocation:
-                        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-                        this._invokeClientMethod(message);
+                        this._invokeClientMethod(message)
+                            .catch((e) => {
+                            this._logger.log(LogLevel.Error, `Invoke client method threw error: ${getErrorString(e)}`);
+                        });
                         break;
                     case MessageType.StreamItem:
                     case MessageType.Completion: {
@@ -1958,16 +1961,16 @@ class HubConnection {
         if (nonblocking) {
             if (streamIds.length !== 0) {
                 return {
+                    target: methodName,
                     arguments: args,
                     streamIds,
-                    target: methodName,
                     type: MessageType.Invocation,
                 };
             }
             else {
                 return {
-                    arguments: args,
                     target: methodName,
+                    arguments: args,
                     type: MessageType.Invocation,
                 };
             }
@@ -1977,18 +1980,18 @@ class HubConnection {
             this._invocationId++;
             if (streamIds.length !== 0) {
                 return {
+                    target: methodName,
                     arguments: args,
                     invocationId: invocationId.toString(),
                     streamIds,
-                    target: methodName,
                     type: MessageType.Invocation,
                 };
             }
             else {
                 return {
+                    target: methodName,
                     arguments: args,
                     invocationId: invocationId.toString(),
-                    target: methodName,
                     type: MessageType.Invocation,
                 };
             }
@@ -2054,18 +2057,18 @@ class HubConnection {
         this._invocationId++;
         if (streamIds.length !== 0) {
             return {
+                target: methodName,
                 arguments: args,
                 invocationId: invocationId.toString(),
                 streamIds,
-                target: methodName,
                 type: MessageType.StreamInvocation,
             };
         }
         else {
             return {
+                target: methodName,
                 arguments: args,
                 invocationId: invocationId.toString(),
-                target: methodName,
                 type: MessageType.StreamInvocation,
             };
         }
@@ -2102,7 +2105,7 @@ class HubConnection {
     }
 }
 
-;// CONCATENATED MODULE: ./src/DefaultReconnectPolicy.ts
+;// ./src/DefaultReconnectPolicy.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // 0, 2, 10, 30 second delays before reconnect attempts.
@@ -2117,7 +2120,7 @@ class DefaultReconnectPolicy {
     }
 }
 
-;// CONCATENATED MODULE: ./src/HeaderNames.ts
+;// ./src/HeaderNames.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 class HeaderNames {
@@ -2125,7 +2128,7 @@ class HeaderNames {
 HeaderNames.Authorization = "Authorization";
 HeaderNames.Cookie = "Cookie";
 
-;// CONCATENATED MODULE: ./src/AccessTokenHttpClient.ts
+;// ./src/AccessTokenHttpClient.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -2172,7 +2175,7 @@ class AccessTokenHttpClient extends HttpClient {
     }
 }
 
-;// CONCATENATED MODULE: ./src/ITransport.ts
+;// ./src/ITransport.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // This will be treated as a bit flag in the future, so we keep it using power-of-two values.
@@ -2197,7 +2200,7 @@ var TransferFormat;
     TransferFormat[TransferFormat["Binary"] = 2] = "Binary";
 })(TransferFormat || (TransferFormat = {}));
 
-;// CONCATENATED MODULE: ./src/AbortController.ts
+;// ./src/AbortController.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // Rough polyfill of https://developer.mozilla.org/en-US/docs/Web/API/AbortController
@@ -2226,7 +2229,7 @@ class AbortController_AbortController {
     }
 }
 
-;// CONCATENATED MODULE: ./src/LongPollingTransport.ts
+;// ./src/LongPollingTransport.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -2410,7 +2413,7 @@ class LongPollingTransport {
     }
 }
 
-;// CONCATENATED MODULE: ./src/ServerSentEventsTransport.ts
+;// ./src/ServerSentEventsTransport.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -2514,7 +2517,7 @@ class ServerSentEventsTransport {
     }
 }
 
-;// CONCATENATED MODULE: ./src/WebSocketTransport.ts
+;// ./src/WebSocketTransport.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -2670,10 +2673,9 @@ class WebSocketTransport {
     }
 }
 
-;// CONCATENATED MODULE: ./src/HttpConnection.ts
+;// ./src/HttpConnection.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-
 
 
 
@@ -2705,8 +2707,11 @@ class HttpConnection {
         let webSocketModule = null;
         let eventSourceModule = null;
         if (Platform.isNode && "function" !== "undefined") {
-            webSocketModule = getWS();
-            eventSourceModule = getEventSource();
+            // In order to ignore the dynamic require in webpack builds we need to do this magic
+            // @ts-ignore: TS doesn't know about these names
+            const requireFunc =  true ? require : 0;
+            webSocketModule = requireFunc("ws");
+            eventSourceModule = requireFunc("eventsource");
         }
         if (!Platform.isNode && typeof WebSocket !== "undefined" && !options.WebSocket) {
             options.WebSocket = WebSocket;
@@ -3239,7 +3244,7 @@ class PromiseSource {
     }
 }
 
-;// CONCATENATED MODULE: ./src/JsonHubProtocol.ts
+;// ./src/JsonHubProtocol.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -3359,7 +3364,7 @@ class JsonHubProtocol {
     }
 }
 
-;// CONCATENATED MODULE: ./src/HubConnectionBuilder.ts
+;// ./src/HubConnectionBuilder.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -3504,7 +3509,7 @@ function isLogger(logger) {
     return logger.log !== undefined;
 }
 
-;// CONCATENATED MODULE: ./src/index.ts
+;// ./src/index.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -3520,7 +3525,7 @@ function isLogger(logger) {
 
 
 
-;// CONCATENATED MODULE: ./src/browser-index.ts
+;// ./src/browser-index.ts
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // This is where we add any polyfills we'll need for the browser. It is the entry module for browser-specific builds.

@@ -1,6 +1,4 @@
-﻿.device-card { 
-    transition: transform 0.2s, box-shadow 0.2s; 
-}
+﻿.device-card { transition: transform 0.2s, box-shadow 0.2s; }
 
 .device-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -8,9 +6,8 @@
 }
 
 /* Dark mode adjustments for device cards */
-[data-bs-theme="dark"] .device-card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+
+[data-bs-theme="dark"] .device-card:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
 .chart-container {
     height: 150px;
@@ -22,6 +19,37 @@
     margin-bottom: 0;
 }
 
+/* Energy and gas metrics styling */
+
+.total-energy {
+    color: #0dcaf0; /* Bootstrap info color */
+    font-weight: 600;
+}
+
+.total-gas {
+    color: #ffc107; /* Bootstrap warning color */
+    font-weight: 600;
+}
+
+.last-update {
+    color: #6c757d; /* Bootstrap muted color */
+    font-weight: 500;
+}
+
+/* Dark mode support for metrics */
+
+[data-bs-theme="dark"] .total-energy {
+    color: #9ec5fe; /* Lighter info color for dark mode */
+}
+
+[data-bs-theme="dark"] .total-gas {
+    color: #ffda6a; /* Lighter warning color for dark mode */
+}
+
+[data-bs-theme="dark"] .last-update {
+    color: #adb5bd; /* Lighter muted color for dark mode */
+}
+
 .badge { font-size: 0.75em; }
 
 .card-header {
@@ -30,6 +58,7 @@
 }
 
 /* Dark mode card header styling */
+
 [data-bs-theme="dark"] .card-header {
     background-color: var(--bs-secondary-bg);
     border-bottom-color: var(--bs-border-color);

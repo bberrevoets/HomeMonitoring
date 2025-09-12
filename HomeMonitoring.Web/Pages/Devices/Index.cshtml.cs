@@ -14,7 +14,7 @@ public class IndexModel : PageModel
         _context = context;
     }
 
-    public IList<Device> Devices { get; set; } = default!;
+    public IList<Device> Devices { get; set; } = null!;
 
     public async Task OnGetAsync()
     {

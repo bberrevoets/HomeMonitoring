@@ -1,8 +1,8 @@
-// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -60,7 +60,10 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    // Add custom application meters
+                    .AddMeter("HomeMonitoring.SensorAgent")
+                    .AddMeter("HomeMonitoring.Web");
             })
             .WithTracing(tracing =>
             {
@@ -115,15 +118,64 @@ public static class Extensions
         if (app.Environment.IsDevelopment())
         {
             // All health checks must pass for app to be considered ready to accept traffic after starting
-            app.MapHealthChecks(HealthEndpointPath);
+            app.MapHealthChecks(HealthEndpointPath, new HealthCheckOptions
+            {
+                ResponseWriter = WriteHealthCheckResponse
+            });
 
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
             app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
             {
-                Predicate = r => r.Tags.Contains("live")
+                Predicate = r => r.Tags.Contains("live"),
+                ResponseWriter = WriteHealthCheckResponse
             });
         }
 
         return app;
+    }
+
+    private static async Task WriteHealthCheckResponse(HttpContext context, HealthReport healthReport)
+    {
+        context.Response.ContentType = "application/json; charset=utf-8";
+
+        var options = new JsonWriterOptions { Indented = true };
+
+        using var memoryStream = new MemoryStream();
+        await using (var jsonWriter = new Utf8JsonWriter(memoryStream, options))
+        {
+            jsonWriter.WriteStartObject();
+            jsonWriter.WriteString("status", healthReport.Status.ToString());
+            jsonWriter.WriteString("totalDuration", healthReport.TotalDuration.ToString());
+            jsonWriter.WriteStartObject("results");
+
+            foreach (var (key, value) in healthReport.Entries)
+            {
+                jsonWriter.WriteStartObject(key);
+                jsonWriter.WriteString("status", value.Status.ToString());
+                jsonWriter.WriteString("description", value.Description ?? "");
+                jsonWriter.WriteString("duration", value.Duration.ToString());
+
+                if (value.Exception != null) jsonWriter.WriteString("exception", value.Exception.ToString());
+
+                if (value.Data.Count > 0)
+                {
+                    jsonWriter.WriteStartObject("data");
+                    foreach (var (dataKey, dataValue) in value.Data)
+                    {
+                        jsonWriter.WritePropertyName(dataKey);
+                        JsonSerializer.Serialize(jsonWriter, dataValue, typeof(object));
+                    }
+
+                    jsonWriter.WriteEndObject();
+                }
+
+                jsonWriter.WriteEndObject();
+            }
+
+            jsonWriter.WriteEndObject();
+            jsonWriter.WriteEndObject();
+        }
+
+        await context.Response.WriteAsync(Encoding.UTF8.GetString(memoryStream.ToArray()));
     }
 }

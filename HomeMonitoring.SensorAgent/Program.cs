@@ -1,4 +1,6 @@
 using HomeMonitoring.SensorAgent;
+using HomeMonitoring.SensorAgent.HealthChecks;
+using HomeMonitoring.SensorAgent.Metrics;
 using HomeMonitoring.SensorAgent.Services;
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Shared.Models;
@@ -30,7 +32,7 @@ try
                                    IncludedData.SpanIdField;
         })
         .WriteTo.Seq(
-            serverUrl: builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
+            builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
             apiKey: builder.Configuration["SeqApiKey"]));
 
     // Add the service defaults (e.g., logging, configuration, etc.)
@@ -76,6 +78,19 @@ try
 
     // Register Email service
     builder.Services.AddScoped<IEmailService, EmailService>();
+
+    // Register custom metrics as singleton
+    builder.Services.AddSingleton<SensorAgentMetrics>();
+
+    // Add additional health checks beyond the defaults
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            builder.Configuration.GetConnectionString("sensorsdb")!,
+            name: "sql-server",
+            tags: ["db", "ready"])
+        .AddCheck<DeviceConnectivityHealthCheck>(
+            "device-connectivity",
+            tags: ["devices", "ready"]);
 
     // Register the Worker as a hosted service
     builder.Services.AddHostedService<Worker>();

@@ -1,16 +1,17 @@
-﻿// Copyright (c) 2025 Bert Berrevoets
-// Licensed under the MIT License. See LICENSE file in the project root for full license information.
-
-namespace HomeMonitoring.Shared.Models;
+﻿namespace HomeMonitoring.Shared.Models;
 
 public class EmailSettings
 {
     public string SmtpHost { get; set; } = "localhost";
     public int SmtpPort { get; set; } = 1025; // Mailpit default port
-    public bool UseSsl { get; set; } = false;
+    public bool UseSsl { get; set; }
     public string FromEmail { get; set; } = "homemonitoring@localhost";
     public string FromName { get; set; } = "Home Monitoring System";
+
+    // ReSharper disable once UnusedAutoPropertyAccessor.Global
     public string? SmtpUsername { get; set; }
+
+    // ReSharper disable once UnusedAutoPropertyAccessor.Global
     public string? SmtpPassword { get; set; }
 
     // Monitoring settings
