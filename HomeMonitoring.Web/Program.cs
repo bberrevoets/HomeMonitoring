@@ -45,6 +45,7 @@ try
 
     // Add SignalR
     builder.Services.AddSignalR();
+    builder.Services.AddHostedService<PhilipsHueLightMonitorService>();
 
     // Add HttpClient for device communication
     builder.Services.AddHttpClient();
@@ -101,6 +102,7 @@ try
     app.MapRazorPages();
     app.MapHub<EnergyHub>("/energyHub");
     app.MapDefaultEndpoints();
+    app.MapHub<LightsHub>("/lightsHub"); 
 
     // Map Health Checks UI
     app.MapHealthChecksUI(options =>
