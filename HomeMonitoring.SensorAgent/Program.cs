@@ -76,6 +76,9 @@ try
     // Register HomeWizard service
     builder.Services.AddScoped<IHomeWizardService, HomeWizardService>();
 
+    // Register Philips Hue service
+    builder.Services.AddScoped<IPhilipsHueService, PhilipsHueService>();
+
     // Register Email service
     builder.Services.AddScoped<IEmailService, EmailService>();
 
@@ -97,6 +100,9 @@ try
 
     // Register the Device Monitoring service
     builder.Services.AddHostedService<DeviceMonitoringService>();
+
+    // Register the Hue Light Monitoring service
+    builder.Services.AddHostedService<HueLightMonitoringService>();
 
     var host = builder.Build();
     host.Run();

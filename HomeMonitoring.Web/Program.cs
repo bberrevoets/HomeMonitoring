@@ -1,3 +1,4 @@
+using HomeMonitoring.SensorAgent.Services;
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Web.Hubs;
 using HomeMonitoring.Web.Models;
@@ -44,6 +45,7 @@ try
 
     // Add SignalR
     builder.Services.AddSignalR();
+    builder.Services.AddHostedService<PhilipsHueLightMonitorService>();
 
     // Add HttpClient for device communication
     builder.Services.AddHttpClient();
@@ -77,6 +79,7 @@ try
 
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
+    builder.Services.AddScoped<IPhilipsHueService, PhilipsHueService>();
     builder.Services.AddHostedService<DashboardUpdateService>();
 
     var app = builder.Build();
@@ -99,6 +102,7 @@ try
     app.MapRazorPages();
     app.MapHub<EnergyHub>("/energyHub");
     app.MapDefaultEndpoints();
+    app.MapHub<LightsHub>("/lightsHub"); 
 
     // Map Health Checks UI
     app.MapHealthChecksUI(options =>
