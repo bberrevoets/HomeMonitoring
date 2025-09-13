@@ -8,11 +8,6 @@
 	<h1 class="display-4 mb-4">Energy Dashboard</h1>
 	<p class="lead">Monitor your HomeWizard energy devices in real-time.</p>
 
-	<!-- Connection Status Indicator -->
-	<div class="alert alert-info" id="connection-status" style="display: none;">
-		<span id="connection-text">Connecting to real-time updates...</span>
-	</div>
-
 	@if (Model.DashboardData.Devices.Any())
 	{
 		<div id="dashboard-container" class="row">
@@ -92,24 +87,8 @@
 			constructor() {
 				this.charts = new Map();
 				this.connection = null;
-				this.connectionStatusElement = document.getElementById('connection-status');
-				this.connectionTextElement = document.getElementById('connection-text');
 				this.initializeSignalR();
 				this.initializeCharts();
-			}
-
-			showConnectionStatus(message, isError = false) {
-				this.connectionStatusElement.style.display = 'block';
-				this.connectionStatusElement.className = `alert ${isError ? 'alert-danger' : 'alert-info'}`;
-				this.connectionTextElement.textContent = message;
-
-				if (!isError) {
-					// Hide success messages after 3 seconds
-					setTimeout(() => {
-							this.connectionStatusElement.style.display = 'none';
-						},
-						3000);
-				}
 			}
 
 			async initializeSignalR() {
@@ -131,22 +110,21 @@
 						this.updateDeviceChart(deviceId, chartData);
 					});
 
-				// Fixed the connection event handlers
 				this.connection.onreconnected(() => {
 					console.log("SignalR reconnected");
-					this.showConnectionStatus("Reconnected to real-time updates");
+					window.toaster.success("Reconnected to real-time updates");
 					// Rejoin the dashboard group after reconnection
 					this.connection.invoke("JoinDashboard").catch(err => console.error("Failed to rejoin dashboard:", err));
 				});
 
 				this.connection.onreconnecting((error) => {
 					console.log("SignalR reconnecting", error);
-					this.showConnectionStatus("Reconnecting to real-time updates...", true);
+					window.toaster.warning("Reconnecting to real-time updates...", 0); // 0 = no auto-hide
 				});
 
 				this.connection.onclose((error) => {
 					console.error("SignalR connection closed:", error);
-					this.showConnectionStatus("Lost connection to real-time updates", true);
+					window.toaster.error("Lost connection to real-time updates");
 				});
 
 				try {
@@ -154,10 +132,10 @@
 					console.log("SignalR connection started, state:", this.connection.state);
 					await this.connection.invoke("JoinDashboard");
 					console.log("Joined Dashboard group");
-					this.showConnectionStatus("Connected to real-time updates");
+					window.toaster.success("Connected to real-time updates");
 				} catch (err) {
 					console.error("Error connecting to energy hub:", err);
-					this.showConnectionStatus("Failed to connect to real-time updates", true);
+					window.toaster.error("Failed to connect to real-time updates");
 				}
 			}
 

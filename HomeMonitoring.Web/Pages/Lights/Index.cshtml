@@ -8,15 +8,12 @@
 
 @if (TempData["SuccessMessage"] != null)
 {
-	<div class="alert alert-success alert-dismissible fade show" role="alert">
-		@TempData["SuccessMessage"]
-		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-	</div>
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			window.toaster.success('@Html.Raw(TempData["SuccessMessage"])');
+		});
+	</script>
 }
-
-<div class="alert alert-info" id="sync-status" style="display: none;">
-	<span id="sync-text">Syncing with lights...</span>
-</div>
 
 @if (!Model.Bridges.Any())
 {
@@ -119,23 +116,79 @@ else
 			// Track active brightness updates to prevent conflicts
 			var activeBrightnessUpdates = {};
 
+			// Track user-initiated changes to suppress notifications
+			var userInitiatedChanges = new Map();
+			const CHANGE_SUPPRESSION_DURATION = 3000; // Suppress notifications for 3 seconds after user action
+
+			// Helper function to create a change key
+			function getChangeKey(bridgeId, lightId) {
+				return `${bridgeId}-${lightId}`;
+			}
+
+			// Helper function to track user-initiated change
+			function trackUserChange(bridgeId, lightId, changeType, value) {
+				const key = getChangeKey(bridgeId, lightId);
+				const changeData = {
+					type: changeType,
+					value: value,
+					timestamp: Date.now()
+				};
+				
+				// Store or update the change data
+				if (!userInitiatedChanges.has(key)) {
+					userInitiatedChanges.set(key, []);
+				}
+				userInitiatedChanges.get(key).push(changeData);
+				
+				// Clean up old entries after suppression duration
+				setTimeout(() => {
+					const changes = userInitiatedChanges.get(key);
+					if (changes) {
+						const now = Date.now();
+						const filtered = changes.filter(c => now - c.timestamp < CHANGE_SUPPRESSION_DURATION);
+						if (filtered.length === 0) {
+							userInitiatedChanges.delete(key);
+						} else {
+							userInitiatedChanges.set(key, filtered);
+						}
+					}
+				}, CHANGE_SUPPRESSION_DURATION);
+			}
+
+			// Helper function to check if a change should be suppressed
+			function shouldSuppressNotification(bridgeId, lightId, changeData) {
+				const key = getChangeKey(bridgeId, lightId);
+				const userChanges = userInitiatedChanges.get(key);
+				
+				if (!userChanges || userChanges.length === 0) {
+					return false;
+				}
+				
+				const now = Date.now();
+				
+				// Check if any recent user changes match this update
+				return userChanges.some(userChange => {
+					// Check if change is within suppression window
+					if (now - userChange.timestamp > CHANGE_SUPPRESSION_DURATION) {
+						return false;
+					}
+					
+					// Check if the change type matches
+					if (changeData.isOn !== undefined && userChange.type === 'power') {
+						return changeData.isOn === userChange.value;
+					}
+					
+					if (changeData.brightness !== undefined && userChange.type === 'brightness') {
+						// Allow some tolerance for brightness values
+						return Math.abs(changeData.brightness - userChange.value) <= 5;
+					}
+					
+					return false;
+				});
+			}
+
 			// SignalR connection
 			var connection = null;
-			var syncStatusElement = document.getElementById('sync-status');
-			var syncTextElement = document.getElementById('sync-text');
-
-			function showSyncStatus(message, isError = false) {
-				syncStatusElement.style.display = 'block';
-				syncStatusElement.className = `alert ${isError ? 'alert-danger' : 'alert-info'}`;
-				syncTextElement.textContent = message;
-
-				if (!isError) {
-					setTimeout(() => {
-							syncStatusElement.style.display = 'none';
-						},
-						3000);
-				}
-			}
 
 			// Initialize SignalR connection
 			async function initializeSignalR() {
@@ -148,32 +201,43 @@ else
 				connection.on("LightStateChanged",
 					function(changes) {
 						console.log("Received light state changes:", changes);
+						
+						// Filter out changes that were initiated by the user
+						let externalChanges = changes.filter(change => 
+							!shouldSuppressNotification(change.bridgeId, change.lightId, change)
+						);
+						
+						// Update UI for all changes
 						changes.forEach(function(change) {
 							updateLightUI(change);
 						});
-						showSyncStatus(`Updated ${changes.length} light(s)`);
+						
+						// Only show notification for external changes
+						if (externalChanges.length > 0) {
+							window.toaster.info(`Updated ${externalChanges.length} light(s)`);
+						}
 					});
 
 				connection.onreconnected(() => {
-					showSyncStatus("Reconnected to live updates");
+					window.toaster.success("Reconnected to live updates");
 					connection.invoke("JoinLightsPage").catch(err => console.error("Failed to rejoin lights page:", err));
 				});
 
 				connection.onreconnecting(() => {
-					showSyncStatus("Reconnecting to live updates...", true);
+					window.toaster.warning("Reconnecting to live updates...", 0);
 				});
 
 				connection.onclose(() => {
-					showSyncStatus("Lost connection to live updates", true);
+					window.toaster.error("Lost connection to live updates");
 				});
 
 				try {
 					await connection.start();
 					await connection.invoke("JoinLightsPage");
-					showSyncStatus("Connected to live updates");
+					window.toaster.success("Connected to live updates");
 				} catch (err) {
 					console.error("Error connecting to lights hub:", err);
-					showSyncStatus("Failed to connect to live updates", true);
+					window.toaster.error("Failed to connect to live updates");
 				}
 			}
 
@@ -225,6 +289,9 @@ else
 				const isOn = checkbox.is(':checked');
 				const brightnessSlider = checkbox.closest('.card-body').find(`.brightness-slider[data-light-id="${lightId}"]`);
 
+				// Track this user-initiated change
+				trackUserChange(bridgeId, lightId, 'power', isOn);
+
 				// Prepare data
 				const data = {
 					bridgeId: bridgeId,
@@ -234,7 +301,10 @@ else
 
 				// If turning on, include the current brightness value from the slider
 				if (isOn && brightnessSlider.length) {
-					data.brightness = parseInt(brightnessSlider.val());
+					const brightness = parseInt(brightnessSlider.val());
+					data.brightness = brightness;
+					// Also track the brightness change when turning on
+					trackUserChange(bridgeId, lightId, 'brightness', brightness);
 				}
 
 				$.ajax({
@@ -251,7 +321,7 @@ else
 						// Revert on failure
 						checkbox.prop('checked', !isOn);
 						console.error('Error toggling light:', error);
-						alert(`Failed to toggle light: ${xhr.responseText || error}`);
+						window.toaster.error(`Failed to toggle light: ${xhr.responseText || error}`);
 					}
 				});
 			});
@@ -275,6 +345,9 @@ else
 					const key = bridgeId + '-' + lightId;
 					const checkbox = slider.closest('.card-body').find(`.light-switch[data-light-id="${lightId}"]`);
 					const isLightOn = checkbox.is(':checked');
+
+					// Track this user-initiated change
+					trackUserChange(bridgeId, lightId, 'brightness', brightness);
 
 					// Cancel any pending update for this light
 					if (activeBrightnessUpdates[key]) {
@@ -315,7 +388,7 @@ else
 											slider.siblings('.brightness-value').text(percentage + '%');
 										}
 
-										alert(`Failed to set brightness: ${xhr.responseText || error}`);
+										window.toaster.error(`Failed to set brightness: ${xhr.responseText || error}`);
 									}
 								});
 							},
@@ -342,7 +415,7 @@ else
 					},
 					error: function(xhr, status, error) {
 						console.error('Error refreshing lights:', error);
-						alert(`Failed to refresh lights: ${xhr.responseText || error}`);
+						window.toaster.error(`Failed to refresh lights: ${xhr.responseText || error}`);
 					},
 					complete: function() {
 						button.prop('disabled', false).text('Refresh Lights');

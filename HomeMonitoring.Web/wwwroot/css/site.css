@@ -190,3 +190,34 @@ body {
 /* Make sure button links are still properly styled */
 
 [data-bs-theme="dark"] .btn { color: var(--bs-btn-color) !important; }
+
+/* Toast enhancements */
+.toast {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast.hide {
+    animation: slideOutRight 0.3s ease-out;
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
