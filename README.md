@@ -87,11 +87,13 @@ This will:
 - Launch the Sensor Agent service
 - Launch the Web dashboard
 
-Access the services at:
-- **Aspire Dashboard**: https://localhost:17037
-- **Web Dashboard**: https://localhost:7294
-- **Seq Logs**: http://localhost:5341
-- **Mailpit**: http://localhost:8025
+Access the services through the **Aspire Dashboard**:
+- **Aspire Dashboard**: The primary entry point that shows all running services and their dynamically assigned ports
+- **Web Dashboard**: Access via the Aspire Dashboard or the direct link shown in the console
+- **Seq Logs**: Access via the Aspire Dashboard for centralized logging
+- **Mailpit**: Access via the Aspire Dashboard for email testing
+
+> **Note**: Port numbers are dynamically assigned by .NET Aspire. Use the Aspire Dashboard to access all services with their current port assignments. The dashboard URL will be displayed in the console when you run the application.
 
 ## Database Migrations
 
