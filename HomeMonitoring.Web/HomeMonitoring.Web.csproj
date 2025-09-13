@@ -28,6 +28,7 @@
 	</ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HomeMonitoring.SensorAgent\HomeMonitoring.SensorAgent.csproj" />
     <ProjectReference Include="..\HomeMonitoring.Shared\HomeMonitoring.Shared.csproj" />
     <ProjectReference Include="..\ServiceDefaults\ServiceDefaults.csproj" />
   </ItemGroup>

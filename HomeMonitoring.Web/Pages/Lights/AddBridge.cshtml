@@ -1,0 +1,70 @@
+@page
+@model HomeMonitoring.Web.Pages.Lights.AddBridgeModel
+
+@{
+    ViewData["Title"] = "Add Philips Hue Bridge";
+}
+
+<h1>Add Philips Hue Bridge</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.InfoMessage))
+        {
+            <div class="alert alert-info" role="alert">
+                @Model.InfoMessage
+            </div>
+        }
+
+        @if (Model.WaitingForButtonPress)
+        {
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Action Required!</h4>
+                <p>Please press the link button on your Philips Hue bridge.</p>
+                <hr>
+                <p class="mb-0">The link button is the large button in the center of the bridge. After pressing it, click "Register" below within 30 seconds.</p>
+            </div>
+        }
+
+        <form method="post">
+            <div class="form-group mb-3">
+                <label asp-for="BridgeIp" class="control-label">Bridge IP Address</label>
+                <input asp-for="BridgeIp" class="form-control" placeholder="e.g., 192.168.1.100" />
+                <small class="form-text text-muted">Click "Auto Discover" to find bridges automatically</small>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" formaction="?handler=Discover" class="btn btn-secondary">Auto Discover</button>
+                <button type="submit" formaction="?handler=Register" class="btn btn-primary">Register</button>
+                <a asp-page="Index" class="btn btn-link">Cancel</a>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Instructions</h5>
+                <ol>
+                    <li>Click "Auto Discover" to automatically find bridges on your network, or enter the IP address manually.</li>
+                    <li>Once you have the IP address, click "Register".</li>
+                    <li>When prompted, press the link button on your Hue bridge.</li>
+                    <li>Click "Register" again within 30 seconds.</li>
+                </ol>
+                <p class="card-text">
+                    <small class="text-muted">The bridge will appear in the lights page once successfully registered.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

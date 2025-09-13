@@ -1,3 +1,4 @@
+using HomeMonitoring.SensorAgent.Services;
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Web.Hubs;
 using HomeMonitoring.Web.Models;
@@ -77,6 +78,7 @@ try
 
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
+    builder.Services.AddScoped<IPhilipsHueService, PhilipsHueService>();
     builder.Services.AddHostedService<DashboardUpdateService>();
 
     var app = builder.Build();

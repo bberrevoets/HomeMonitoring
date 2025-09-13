@@ -1,0 +1,248 @@
+@page
+@model HomeMonitoring.Web.Pages.Lights.IndexModel
+@{
+    ViewData["Title"] = "Philips Hue Lights";
+}
+
+<h1>Philips Hue Lights</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!Model.Bridges.Any())  
+{
+    <div class="alert alert-info">
+        <h5>No Hue Bridges configured</h5>
+        <p>Add a Hue Bridge to start controlling your lights.</p>
+        <a asp-page="AddBridge" class="btn btn-primary">Add Bridge</a>
+    </div>
+}
+else
+{
+    <div class="mb-3">
+        <a asp-page="AddBridge" class="btn btn-primary">Add Bridge</a>
+    </div>
+
+    @foreach (var bridge in Model.Bridges)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Bridge: @bridge.IpAddress</h5>
+                <span class="badge bg-@(bridge.IsEnabled ? "success" : "secondary")">
+                    @(bridge.IsEnabled ? "Active" : "Inactive")
+                </span>
+            </div>
+            <div class="card-body">
+                @if (bridge.Lights.Any())
+                {
+                    <div class="row">
+                        @foreach (var light in bridge.Lights.OrderBy(l => l.Name))
+                        {
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title">@light.Name</h6>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input light-switch" 
+                                                       type="checkbox" 
+                                                       data-bridge-id="@bridge.BridgeId" 
+                                                       data-light-id="@light.Id" 
+                                                       @(light.IsOn ? "checked" : "")
+                                                       @(!light.IsReachable ? "disabled" : "")>
+                                                <label class="form-check-label">
+                                                    @(light.IsOn ? "On" : "Off")
+                                                    @if (!light.IsReachable)
+                                                    {
+                                                        <small class="text-muted">(Unreachable)</small>
+                                                    }
+                                                </label>
+                                            </div>
+                                        </div>
+                                        @if (light.Brightness.HasValue && light.IsReachable)
+                                        {
+                                            <div class="mb-2">
+                                                <label class="form-label small">Brightness</label>
+                                                <input type="range" 
+                                                       class="form-range brightness-slider" 
+                                                       min="1" 
+                                                       max="254" 
+                                                       value="@light.Brightness"
+                                                       data-bridge-id="@bridge.BridgeId" 
+                                                       data-light-id="@light.Id">
+                                                <small class="text-muted brightness-value">@((int)(light.Brightness.Value / 254.0 * 100))%</small>
+                                            </div>
+                                        }
+                                        <small class="text-muted">@light.Type</small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p>No lights found. Make sure the bridge is connected and lights are available.</p>
+                    <button class="btn btn-sm btn-secondary refresh-lights" data-bridge-id="@bridge.BridgeId">
+                        Refresh Lights
+                    </button>
+                }
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Add CSRF token to all AJAX requests
+            var token = $('input[name="__RequestVerificationToken"]').val();
+            if (!token) {
+                // If token not found in form, add a hidden form with token
+                var tokenField = '@Html.AntiForgeryToken()';
+                var match = tokenField.match(/value="([^"]+)"/);
+                if (match) {
+                    token = match[1];
+                }
+            }
+
+            // Track active brightness updates to prevent conflicts
+            var activeBrightnessUpdates = {};
+
+            // Handle light switch toggle
+            $('.light-switch').change(function() {
+                const checkbox = $(this);
+                const bridgeId = checkbox.data('bridge-id');
+                const lightId = checkbox.data('light-id');
+                const isOn = checkbox.is(':checked');
+                const brightnessSlider = checkbox.closest('.card-body').find('.brightness-slider[data-light-id="' + lightId + '"]');
+                
+                // Prepare data
+                var data = { 
+                    bridgeId: bridgeId, 
+                    lightId: lightId, 
+                    on: isOn 
+                };
+                
+                // If turning on, include the current brightness value from the slider
+                if (isOn && brightnessSlider.length) {
+                    data.brightness = parseInt(brightnessSlider.val());
+                }
+                
+                $.ajax({
+                    url: '/Lights/Index?handler=ToggleLight',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token
+                    },
+                    data: data,
+                    success: function() {
+                        checkbox.siblings('label').contents().first().replaceWith(isOn ? 'On' : 'Off');
+                    },
+                    error: function(xhr, status, error) {
+                        // Revert on failure
+                        checkbox.prop('checked', !isOn);
+                        console.error('Error toggling light:', error);
+                        alert('Failed to toggle light: ' + (xhr.responseText || error));
+                    }
+                });
+            });
+
+            // Handle brightness change - update display immediately
+            $('.brightness-slider').on('input', function() {
+                const slider = $(this);
+                const brightness = parseInt(slider.val());
+                const percentage = Math.round((brightness / 254) * 100);
+                slider.siblings('.brightness-value').text(percentage + '%');
+            });
+
+            // Handle brightness change - send to API when user stops sliding
+            $('.brightness-slider').on('change', function() {
+                const slider = $(this);
+                const bridgeId = slider.data('bridge-id');
+                const lightId = slider.data('light-id');
+                const brightness = parseInt(slider.val());
+                const key = bridgeId + '-' + lightId;
+                const checkbox = slider.closest('.card-body').find('.light-switch[data-light-id="' + lightId + '"]');
+                const isLightOn = checkbox.is(':checked');
+                
+                // Cancel any pending update for this light
+                if (activeBrightnessUpdates[key]) {
+                    clearTimeout(activeBrightnessUpdates[key]);
+                }
+                
+                // Store the current brightness value
+                slider.data('last-brightness', brightness);
+                
+                // Only send brightness update to the API if the light is currently on
+                if (isLightOn) {
+                    // Set a short delay to batch rapid changes
+                    activeBrightnessUpdates[key] = setTimeout(function() {
+                        $.ajax({
+                            url: '/Lights/Index?handler=SetBrightness',
+                            type: 'POST',
+                            headers: {
+                                'RequestVerificationToken': token
+                            },
+                            data: { 
+                                bridgeId: bridgeId, 
+                                lightId: lightId, 
+                                brightness: brightness 
+                            },
+                            success: function() {
+                                delete activeBrightnessUpdates[key];
+                                console.log('Brightness set to:', brightness);
+                            },
+                            error: function(xhr, status, error) {
+                                delete activeBrightnessUpdates[key];
+                                console.error('Error setting brightness:', error);
+                                
+                                // Try to revert to previous value if we have it
+                                const lastValue = slider.data('last-brightness');
+                                if (lastValue !== undefined && lastValue !== brightness) {
+                                    slider.val(lastValue);
+                                    const percentage = Math.round((lastValue / 254) * 100);
+                                    slider.siblings('.brightness-value').text(percentage + '%');
+                                }
+                                
+                                alert('Failed to set brightness: ' + (xhr.responseText || error));
+                            }
+                        });
+                    }, 100); // Very short delay, just to batch rapid movements
+                }
+                // If light is off, we just store the value locally - it will be used when turning on
+            });
+
+            // Handle refresh lights
+            $('.refresh-lights').click(function() {
+                const button = $(this);
+                const bridgeId = button.data('bridge-id');
+                button.prop('disabled', true).text('Refreshing...');
+                
+                $.ajax({
+                    url: '/Lights/Index?handler=RefreshLights',
+                    type: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token
+                    },
+                    data: { bridgeId: bridgeId },
+                    success: function() {
+                        location.reload();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error refreshing lights:', error);
+                        alert('Failed to refresh lights: ' + (xhr.responseText || error));
+                    },
+                    complete: function() {
+                        button.prop('disabled', false).text('Refresh Lights');
+                    }
+                });
+            });
+        });
+    </script>
+}
