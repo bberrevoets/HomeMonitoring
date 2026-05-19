@@ -9,8 +9,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
-		<PackageReference Include="AspNetCore.HealthChecks.UI" Version="9.0.0" />
-		<PackageReference Include="AspNetCore.HealthChecks.UI.InMemory.Storage" Version="9.0.0" />
 		<PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
 		<PackageReference Include="KubernetesClient" Version="18.0.5" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />

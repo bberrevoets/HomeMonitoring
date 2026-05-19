@@ -54,28 +54,13 @@ try
     builder.Services.Configure<DashboardSettings>(
         builder.Configuration.GetSection(DashboardSettings.SectionName));
 
-    // Add additional health checks beyond the defaults
+    // Health checks beyond the Aspire defaults; aggregated view lives in the Aspire dashboard.
     builder.Services.AddHealthChecks()
         .AddSqlServer(
             builder.Configuration.GetConnectionString("sensorsdb")!,
             name: "sql-server",
             tags: ["db", "ready"])
         .AddCheck("signalr", () => HealthCheckResult.Healthy("SignalR is operational"), ["signalr", "ready"]);
-
-    // Add Health Checks UI - only monitoring this service
-    builder.Services.AddHealthChecksUI(opt =>
-        {
-            opt.SetEvaluationTimeInSeconds(30); // Check every 30 seconds
-            opt.MaximumHistoryEntriesPerEndpoint(60); // Keep 60 history entries
-            opt.SetApiMaxActiveRequests(1);
-
-            // Only add the current application health check endpoint
-            opt.AddHealthCheckEndpoint("HomeMonitoring Web", "/health");
-
-            // Note: In Aspire environments, each service manages its own health checks
-            // Use the Aspire dashboard to monitor overall application health across services
-        })
-        .AddInMemoryStorage();
 
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -102,14 +87,7 @@ try
     app.MapRazorPages();
     app.MapHub<EnergyHub>("/energyHub");
     app.MapDefaultEndpoints();
-    app.MapHub<LightsHub>("/lightsHub"); 
-
-    // Map Health Checks UI
-    app.MapHealthChecksUI(options =>
-    {
-        options.UIPath = "/health-ui"; // UI at /health-ui
-        options.ApiPath = "/health-ui-api"; // API at /health-ui-api
-    });
+    app.MapHub<LightsHub>("/lightsHub");
 
     app.Run();
 }
