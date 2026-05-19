@@ -23,7 +23,7 @@ try
         .ReadFrom.Configuration(builder.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
-        .Enrich.WithProperty("ServiceName", "HomeMonitoring.SensorAgent")
+        .Enrich.WithProperty("Service", "HomeMonitoring.SensorAgent")
         .WriteTo.Console()
         .WriteTo.OpenTelemetry(options =>
         {
