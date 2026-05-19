@@ -6,16 +6,10 @@ using MimeKit.Text;
 
 namespace HomeMonitoring.SensorAgent.Services;
 
-public class EmailService : IEmailService
+public class EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
+    : IEmailService
 {
-    private readonly EmailSettings _emailSettings;
-    private readonly ILogger<EmailService> _logger;
-
-    public EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailService> logger)
-    {
-        _emailSettings = emailSettings.Value;
-        _logger = logger;
-    }
+    private readonly EmailSettings _emailSettings = emailSettings.Value;
 
     public async Task SendDeviceOfflineAlertAsync(
         string deviceName,
@@ -204,11 +198,11 @@ public class EmailService : IEmailService
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
 
-            _logger.LogInformation("Email sent successfully to {Recipient} with subject: {Subject}", to, subject);
+            logger.LogInformation("Email sent successfully to {Recipient} with subject: {Subject}", to, subject);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {Recipient} with subject: {Subject}", to, subject);
+            logger.LogError(ex, "Failed to send email to {Recipient} with subject: {Subject}", to, subject);
             throw;
         }
     }

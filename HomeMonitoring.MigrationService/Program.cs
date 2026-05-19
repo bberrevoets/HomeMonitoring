@@ -1,5 +1,6 @@
 using HomeMonitoring.MigrationService;
 using HomeMonitoring.Shared.Data;
+using ServiceDefaults;
 
 var builder = Host.CreateApplicationBuilder(args);
 

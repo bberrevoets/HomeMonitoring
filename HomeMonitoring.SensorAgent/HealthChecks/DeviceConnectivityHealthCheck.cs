@@ -4,24 +4,17 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace HomeMonitoring.SensorAgent.HealthChecks;
 
-public class DeviceConnectivityHealthCheck : IHealthCheck
+public class DeviceConnectivityHealthCheck(
+    IServiceProvider serviceProvider,
+    ILogger<DeviceConnectivityHealthCheck> logger)
+    : IHealthCheck
 {
-    private readonly ILogger<DeviceConnectivityHealthCheck> _logger;
-    private readonly IServiceProvider _serviceProvider;
-
-    public DeviceConnectivityHealthCheck(IServiceProvider serviceProvider,
-        ILogger<DeviceConnectivityHealthCheck> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
-
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
 
             var devices = await dbContext.Devices.ToListAsync(cancellationToken);
@@ -53,7 +46,7 @@ public class DeviceConnectivityHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking device connectivity health");
+            logger.LogError(ex, "Error checking device connectivity health");
             return HealthCheckResult.Unhealthy("Failed to check device connectivity", ex);
         }
     }

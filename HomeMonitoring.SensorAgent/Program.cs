@@ -6,6 +6,7 @@ using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Shared.Models;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using ServiceDefaults;
 
 // Configure Serilog early
 Log.Logger = new LoggerConfiguration()

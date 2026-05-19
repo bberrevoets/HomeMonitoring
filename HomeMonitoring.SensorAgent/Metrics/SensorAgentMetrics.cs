@@ -41,7 +41,7 @@ public class SensorAgentMetrics : IDisposable
 
     public void Dispose()
     {
-        _meter?.Dispose();
+        _meter.Dispose();
     }
 
     private int GetActiveDevicesCount()

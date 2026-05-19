@@ -6,28 +6,20 @@ using Microsoft.Extensions.Options;
 
 namespace HomeMonitoring.SensorAgent.Services;
 
-public class DeviceMonitoringService : BackgroundService
+public class DeviceMonitoringService(
+    IServiceProvider serviceProvider,
+    IOptions<EmailSettings> emailSettings,
+    ILogger<DeviceMonitoringService> logger)
+    : BackgroundService
 {
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(5); // Check every 5 minutes
     private readonly ConcurrentDictionary<int, DeviceStatus> _deviceStatuses = new();
-    private readonly EmailSettings _emailSettings;
-    private readonly ILogger<DeviceMonitoringService> _logger;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly EmailSettings _emailSettings = emailSettings.Value;
     private bool _isFirstCheck = true;
-
-    public DeviceMonitoringService(
-        IServiceProvider serviceProvider,
-        IOptions<EmailSettings> emailSettings,
-        ILogger<DeviceMonitoringService> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _emailSettings = emailSettings.Value;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Device Monitoring Service starting");
+        logger.LogInformation("Device Monitoring Service starting");
 
         // Wait a bit for everything to initialize
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
@@ -45,7 +37,7 @@ public class DeviceMonitoringService : BackgroundService
     {
         try
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
             var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
@@ -56,7 +48,7 @@ public class DeviceMonitoringService : BackgroundService
             var threshold = TimeSpan.FromMinutes(_emailSettings.DeviceOfflineThresholdMinutes);
             var now = DateTime.UtcNow;
 
-            _logger.LogDebug("Checking status of {DeviceCount} devices with threshold {Threshold} minutes",
+            logger.LogDebug("Checking status of {DeviceCount} devices with threshold {Threshold} minutes",
                 devices.Count, _emailSettings.DeviceOfflineThresholdMinutes);
 
             foreach (var device in devices)
@@ -74,7 +66,7 @@ public class DeviceMonitoringService : BackgroundService
                     IsOnline = true // Always start with online assumption for new devices
                 });
 
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Device {DeviceName}: LastSeen={LastSeen}, TimeSince={TimeSince}, IsOffline={IsOffline}, StatusOnline={StatusOnline}, IsNew={IsNew}",
                     device.Name, device.LastSeenAt, timeSinceLastSeen, isCurrentlyOffline, status.IsOnline,
                     isNewDevice);
@@ -82,7 +74,7 @@ public class DeviceMonitoringService : BackgroundService
                 if (isCurrentlyOffline && status.IsOnline)
                 {
                     // Device just went offline (or we just discovered it's offline)
-                    _logger.LogWarning("Device {DeviceName} has gone offline. Last seen: {LastSeen} ({TimeSince} ago)",
+                    logger.LogWarning("Device {DeviceName} has gone offline. Last seen: {LastSeen} ({TimeSince} ago)",
                         device.Name, device.LastSeenAt, timeSinceLastSeen);
 
                     status.IsOnline = false;
@@ -99,17 +91,17 @@ public class DeviceMonitoringService : BackgroundService
                             cancellationToken);
 
                         status.LastOfflineAlertSent = now;
-                        _logger.LogInformation("Sent offline alert for device {DeviceName}", device.Name);
+                        logger.LogInformation("Sent offline alert for device {DeviceName}", device.Name);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send offline alert for device {DeviceName}", device.Name);
+                        logger.LogError(ex, "Failed to send offline alert for device {DeviceName}", device.Name);
                     }
                 }
                 else if (!isCurrentlyOffline && !status.IsOnline)
                 {
                     // Device came back online
-                    _logger.LogInformation("Device {DeviceName} is back online", device.Name);
+                    logger.LogInformation("Device {DeviceName} is back online", device.Name);
 
                     var offlineSince = status.WentOfflineAt ?? device.LastSeenAt;
 
@@ -123,11 +115,11 @@ public class DeviceMonitoringService : BackgroundService
                             offlineSince,
                             cancellationToken);
 
-                        _logger.LogInformation("Sent back online alert for device {DeviceName}", device.Name);
+                        logger.LogInformation("Sent back online alert for device {DeviceName}", device.Name);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send back online alert for device {DeviceName}", device.Name);
+                        logger.LogError(ex, "Failed to send back online alert for device {DeviceName}", device.Name);
                     }
 
                     status.IsOnline = true;
@@ -141,7 +133,7 @@ public class DeviceMonitoringService : BackgroundService
                     {
                         // This is a device that was already offline when we started
                         // Send an initial alert
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Device {DeviceName} was already offline at startup. Last seen: {LastSeen} ({TimeSince} ago)",
                             device.Name, device.LastSeenAt, timeSinceLastSeen);
 
@@ -156,11 +148,11 @@ public class DeviceMonitoringService : BackgroundService
 
                             status.LastOfflineAlertSent = now;
                             status.WentOfflineAt = device.LastSeenAt;
-                            _logger.LogInformation("Sent initial offline alert for device {DeviceName}", device.Name);
+                            logger.LogInformation("Sent initial offline alert for device {DeviceName}", device.Name);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to send initial offline alert for device {DeviceName}",
+                            logger.LogError(ex, "Failed to send initial offline alert for device {DeviceName}",
                                 device.Name);
                         }
                     }
@@ -168,7 +160,7 @@ public class DeviceMonitoringService : BackgroundService
                              now - status.LastOfflineAlertSent.Value > TimeSpan.FromHours(24))
                     {
                         // Send reminder every 24 hours
-                        _logger.LogWarning("Device {DeviceName} is still offline (24h reminder)", device.Name);
+                        logger.LogWarning("Device {DeviceName} is still offline (24h reminder)", device.Name);
 
                         try
                         {
@@ -183,13 +175,13 @@ public class DeviceMonitoringService : BackgroundService
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to send reminder alert for device {DeviceName}", device.Name);
+                            logger.LogError(ex, "Failed to send reminder alert for device {DeviceName}", device.Name);
                         }
                     }
                 }
                 else if (!isCurrentlyOffline && status.IsOnline)
                 {
-                    _logger.LogDebug("Device {DeviceName} is online and working normally", device.Name);
+                    logger.LogDebug("Device {DeviceName} is online and working normally", device.Name);
                 }
             }
 
@@ -203,7 +195,7 @@ public class DeviceMonitoringService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking device statuses");
+            logger.LogError(ex, "Error checking device statuses");
         }
     }
 }

@@ -6,6 +6,7 @@ using HomeMonitoring.Web.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using ServiceDefaults;
 
 // Configure Serilog early
 Log.Logger = new LoggerConfiguration()

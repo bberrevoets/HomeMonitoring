@@ -6,21 +6,14 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace HomeMonitoring.MigrationService;
 
-public class Worker : BackgroundService
+public class Worker(
+    ILogger<Worker> logger,
+    IServiceProvider serviceProvider,
+    IHostApplicationLifetime hostApplicationLifetime)
+    : BackgroundService
 {
     private const string ActivitySourceName = "Migrations";
     private static readonly ActivitySource ActivitySource = new(ActivitySourceName);
-    private readonly IHostApplicationLifetime _hostApplicationLifetime;
-    private readonly ILogger<Worker> _logger;
-    private readonly IServiceProvider _serviceProvider;
-
-    public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider,
-        IHostApplicationLifetime hostApplicationLifetime)
-    {
-        _logger = logger;
-        _serviceProvider = serviceProvider;
-        _hostApplicationLifetime = hostApplicationLifetime;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -28,7 +21,7 @@ public class Worker : BackgroundService
 
         try
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
 
             await EnsureDatabase(dbContext, stoppingToken);
@@ -37,11 +30,11 @@ public class Worker : BackgroundService
         catch (Exception ex)
         {
             activity?.AddException(ex);
-            _logger.LogError(ex, "An error occurred during database migration.");
+            logger.LogError(ex, "An error occurred during database migration.");
             throw;
         }
 
-        _hostApplicationLifetime.StopApplication();
+        hostApplicationLifetime.StopApplication();
     }
 
     private static async Task EnsureDatabase(SensorDbContext dbContext, CancellationToken stoppingToken)
