@@ -1,88 +1,88 @@
 ﻿@page
 @model IndexModel
 @{
-	ViewData["Title"] = "Home";
+    ViewData["Title"] = "Home";
 }
 
 <div class="container-fluid">
-	<h1 class="display-4 mb-4">Energy Dashboard</h1>
-	<p class="lead">Monitor your HomeWizard energy devices in real-time.</p>
+    <h1 class="display-4 mb-4">Energy Dashboard</h1>
+    <p class="lead">Monitor your HomeWizard energy devices in real-time.</p>
 
-	@if (Model.DashboardData.Devices.Any())
-	{
-		<div id="dashboard-container" class="row">
-			@foreach (var device in Model.DashboardData.Devices)
-			{
-				<div class="col-xl-4 col-lg-6 col-md-12 mb-3">
-					<div class="card device-card compact-card" data-device-id="@device.DeviceId">
-						<div class="card-header py-2 d-flex justify-content-between align-items-center">
-							<h6 class="card-title mb-0">@device.DeviceName</h6>
-							<span class="badge @(device.IsOnline ? "bg-success" : "bg-danger")">
-								@(device.IsOnline ? "Online" : "Offline")
-							</span>
-						</div>
-						<div class="card-body py-2">
-							<div class="row mb-2">
-								<div class="col-6">
-									<div class="text-center">
-										<h4 class="text-primary mb-0 current-power" data-device-id="@device.DeviceId">
-											@device.CurrentPowerW.ToString("F0")
-										</h4>
-										<small class="text-muted">Watts</small>
-									</div>
-								</div>
-								<div class="col-6">
-									@if (device.TotalEnergyKWh.HasValue)
-									{
-										<div class="text-center">
-											<h5 class="text-info mb-0 total-energy" data-device-id="@device.DeviceId">@device.TotalEnergyKWh.Value.ToString("F2")</h5>
-											<small class="text-muted">kWh Total</small>
-										</div>
-									}
-									@if (device.TotalGasM3.HasValue)
-									{
-										<div class="text-center">
-											<h5 class="text-warning mb-0 total-gas" data-device-id="@device.DeviceId">@device.TotalGasM3.Value.ToString("F2")</h5>
-											<small class="text-muted">m³ Gas</small>
-										</div>
-									}
-								</div>
-							</div>
+    @if (Model.DashboardData.Devices.Any())
+    {
+        <div id="dashboard-container" class="row">
+            @foreach (var device in Model.DashboardData.Devices)
+            {
+                <div class="col-xl-4 col-lg-6 col-md-12 mb-3">
+                    <div class="card device-card compact-card" data-device-id="@device.DeviceId">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">@device.DeviceName</h6>
+                            <span class="badge @(device.IsOnline ? "bg-success" : "bg-danger")">
+                                @(device.IsOnline ? "Online" : "Offline")
+                            </span>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <h4 class="text-primary mb-0 current-power" data-device-id="@device.DeviceId">
+                                            @device.CurrentPowerW.ToString("F0")
+                                        </h4>
+                                        <small class="text-muted">Watts</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    @if (device.TotalEnergyKWh.HasValue)
+                                    {
+                                        <div class="text-center">
+                                            <h5 class="text-info mb-0 total-energy" data-device-id="@device.DeviceId">@device.TotalEnergyKWh.Value.ToString("F2")</h5>
+                                            <small class="text-muted">kWh Total</small>
+                                        </div>
+                                    }
+                                    @if (device.TotalGasM3.HasValue)
+                                    {
+                                        <div class="text-center">
+                                            <h5 class="text-warning mb-0 total-gas" data-device-id="@device.DeviceId">@device.TotalGasM3.Value.ToString("F2")</h5>
+                                            <small class="text-muted">m³ Gas</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
 
-							<div class="mb-2">
-								<small class="text-muted">@device.ProductType</small><br>
-								<small class="text-muted">Last update: <span class="last-update" data-device-id="@device.DeviceId">@device.LastUpdate.ToLocalTime().ToString("HH:mm:ss")</span></small>
-							</div>
+                            <div class="mb-2">
+                                <small class="text-muted">@device.ProductType</small><br>
+                                <small class="text-muted">Last update: <span class="last-update" data-device-id="@device.DeviceId">@device.LastUpdate.ToLocalTime().ToString("HH:mm:ss")</span></small>
+                            </div>
 
-							<div class="chart-container" style="height: 120px;">
-								<canvas id="chart-@device.DeviceId"></canvas>
-							</div>
-						</div>
-					</div>
-				</div>
-			}
-		</div>
-	}
-	else
-	{
-		<div class="row justify-content-center">
-			<div class="col-md-6">
-				<div class="card">
-					<div class="card-body text-center">
-						<h5 class="card-title">No Energy Devices Found</h5>
-						<p class="card-text">You haven't added any HomeWizard devices yet. Click the button below to get started.</p>
-						<a asp-page="/Devices/Index" class="btn btn-primary">Manage Devices</a>
-					</div>
-				</div>
-			</div>
-		</div>
-	}
+                            <div class="chart-container" style="height: 120px;">
+                                <canvas id="chart-@device.DeviceId"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">No Energy Devices Found</h5>
+                        <p class="card-text">You haven't added any HomeWizard devices yet. Click the button below to get started.</p>
+                        <a asp-page="/Devices/Index" class="btn btn-primary">Manage Devices</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @section Scripts {
-	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	<script src="~/lib/microsoft-signalr/signalr.min.js"></script>
-	<script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+    <script>
 		class EnergyDashboard {
 			constructor() {
 				this.charts = new Map();
@@ -141,11 +141,11 @@
 
 			initializeCharts() {
 				@foreach (var device in Model.DashboardData.Devices)
-				{
-					<text>
+                {
+                    <text>
 						this.createChart(@device.DeviceId, @Html.Raw(Json.Serialize(device.ChartData)));
 					</text>
-				}
+                }
 			}
 
 			createChart(deviceId, initialData) {

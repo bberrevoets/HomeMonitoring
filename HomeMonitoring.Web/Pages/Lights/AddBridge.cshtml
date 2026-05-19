@@ -1,5 +1,5 @@
 @page
-@model HomeMonitoring.Web.Pages.Lights.AddBridgeModel
+@model AddBridgeModel
 
 @{
     ViewData["Title"] = "Add Philips Hue Bridge";
@@ -36,7 +36,7 @@
         <form method="post">
             <div class="form-group mb-3">
                 <label asp-for="BridgeIp" class="control-label">Bridge IP Address</label>
-                <input asp-for="BridgeIp" class="form-control" placeholder="e.g., 192.168.1.100" />
+                <input asp-for="BridgeIp" class="form-control" placeholder="e.g., 192.168.1.100"/>
                 <small class="form-text text-muted">Click "Auto Discover" to find bridges automatically</small>
             </div>
 
@@ -66,5 +66,5 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
 }

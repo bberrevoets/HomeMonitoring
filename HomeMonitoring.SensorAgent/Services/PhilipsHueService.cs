@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using HomeMonitoring.Shared.Data;
@@ -13,8 +11,8 @@ public class PhilipsHueService : IPhilipsHueService
 {
     private readonly SensorDbContext _dbContext;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<PhilipsHueService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<PhilipsHueService> _logger;
 
     public PhilipsHueService(
         SensorDbContext dbContext,
@@ -30,7 +28,8 @@ public class PhilipsHueService : IPhilipsHueService
         };
     }
 
-    public async Task<List<HueBridgeDiscoveryResponse>> DiscoverBridgesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<HueBridgeDiscoveryResponse>> DiscoverBridgesAsync(
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -40,7 +39,9 @@ public class PhilipsHueService : IPhilipsHueService
             var response = await httpClient.GetAsync("https://discovery.meethue.com/", cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var bridges = await response.Content.ReadFromJsonAsync<List<HueBridgeDiscoveryResponse>>(_jsonOptions, cancellationToken);
+            var bridges =
+                await response.Content.ReadFromJsonAsync<List<HueBridgeDiscoveryResponse>>(_jsonOptions,
+                    cancellationToken);
             return bridges ?? new List<HueBridgeDiscoveryResponse>();
         }
         catch (Exception ex)
@@ -50,7 +51,8 @@ public class PhilipsHueService : IPhilipsHueService
         }
     }
 
-    public async Task<Dictionary<string, HueLightResponse>> GetLightsAsync(string bridgeIp, string apiKey, CancellationToken cancellationToken = default)
+    public async Task<Dictionary<string, HueLightResponse>> GetLightsAsync(string bridgeIp, string apiKey,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -60,7 +62,9 @@ public class PhilipsHueService : IPhilipsHueService
             var response = await httpClient.GetAsync($"http://{bridgeIp}/api/{apiKey}/lights", cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var lights = await response.Content.ReadFromJsonAsync<Dictionary<string, HueLightResponse>>(_jsonOptions, cancellationToken);
+            var lights =
+                await response.Content.ReadFromJsonAsync<Dictionary<string, HueLightResponse>>(_jsonOptions,
+                    cancellationToken);
             return lights ?? new Dictionary<string, HueLightResponse>();
         }
         catch (Exception ex)
@@ -70,14 +74,16 @@ public class PhilipsHueService : IPhilipsHueService
         }
     }
 
-    public async Task<HueLightResponse> GetLightAsync(string bridgeIp, string apiKey, string lightId, CancellationToken cancellationToken = default)
+    public async Task<HueLightResponse> GetLightAsync(string bridgeIp, string apiKey, string lightId,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             var httpClient = _httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
 
-            var response = await httpClient.GetAsync($"http://{bridgeIp}/api/{apiKey}/lights/{lightId}", cancellationToken);
+            var response =
+                await httpClient.GetAsync($"http://{bridgeIp}/api/{apiKey}/lights/{lightId}", cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var light = await response.Content.ReadFromJsonAsync<HueLightResponse>(_jsonOptions, cancellationToken);
@@ -90,7 +96,8 @@ public class PhilipsHueService : IPhilipsHueService
         }
     }
 
-    public async Task UpdateLightStateAsync(string bridgeIp, string apiKey, string lightId, HueLightState state, CancellationToken cancellationToken = default)
+    public async Task UpdateLightStateAsync(string bridgeIp, string apiKey, string lightId, HueLightState state,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -100,7 +107,8 @@ public class PhilipsHueService : IPhilipsHueService
             var json = JsonSerializer.Serialize(state, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PutAsync($"http://{bridgeIp}/api/{apiKey}/lights/{lightId}/state", content, cancellationToken);
+            var response = await httpClient.PutAsync($"http://{bridgeIp}/api/{apiKey}/lights/{lightId}/state", content,
+                cancellationToken);
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
@@ -110,7 +118,8 @@ public class PhilipsHueService : IPhilipsHueService
         }
     }
 
-    public async Task<string> RegisterApplicationAsync(string bridgeIp, string applicationName, string deviceName, CancellationToken cancellationToken = default)
+    public async Task<string> RegisterApplicationAsync(string bridgeIp, string applicationName, string deviceName,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -134,20 +143,16 @@ public class PhilipsHueService : IPhilipsHueService
             if (responseArray != null && responseArray.Length > 0)
             {
                 var firstResponse = responseArray[0];
-                
+
                 if (firstResponse.TryGetProperty("success", out var success))
                 {
                     if (success.TryGetProperty("username", out var username))
-                    {
                         return username.GetString() ?? string.Empty;
-                    }
                 }
                 else if (firstResponse.TryGetProperty("error", out var error))
                 {
                     if (error.TryGetProperty("description", out var description))
-                    {
                         throw new InvalidOperationException($"Bridge error: {description.GetString()}");
-                    }
                 }
             }
 
@@ -197,7 +202,8 @@ public class PhilipsHueService : IPhilipsHueService
                     };
 
                     _dbContext.HueLights.Add(existingLight);
-                    _logger.LogInformation("Discovered new Hue light: {LightName} (ID: {LightId})", lightData.Name, lightId);
+                    _logger.LogInformation("Discovered new Hue light: {LightName} (ID: {LightId})", lightData.Name,
+                        lightId);
                 }
                 else
                 {

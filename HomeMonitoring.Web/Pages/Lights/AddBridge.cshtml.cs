@@ -20,8 +20,7 @@ public class AddBridgeModel : PageModel
         _logger = logger;
     }
 
-    [BindProperty]
-    public string? BridgeIp { get; set; }
+    [BindProperty] public string? BridgeIp { get; set; }
 
     public string? ErrorMessage { get; set; }
     public string? InfoMessage { get; set; }
@@ -35,7 +34,7 @@ public class AddBridgeModel : PageModel
     {
         // Clear model state to avoid validation issues
         ModelState.Clear();
-        
+
         try
         {
             var bridges = await _hueService.DiscoverBridgesAsync();
@@ -79,11 +78,12 @@ public class AddBridgeModel : PageModel
             }
 
             // Try to register with the bridge
-            var apiKey = await _hueService.RegisterApplicationAsync(BridgeIp, "HomeMonitoring", Environment.MachineName);
+            var apiKey =
+                await _hueService.RegisterApplicationAsync(BridgeIp, "HomeMonitoring", Environment.MachineName);
 
             // Get bridge info to get the bridge ID
             var lights = await _hueService.GetLightsAsync(BridgeIp, apiKey);
-            
+
             var bridge = new HueBridgeConfiguration
             {
                 BridgeId = Guid.NewGuid().ToString(), // In a real app, you'd get this from the bridge config endpoint

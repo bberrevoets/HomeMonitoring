@@ -4,6 +4,8 @@
     <Project Path="ServiceDefaults/ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/Docs/">
+    <File Path="CHANGELOG.md" />
+    <File Path="CLAUDE.md" />
     <File Path="LICENSE" />
     <File Path="README.md" />
   </Folder>

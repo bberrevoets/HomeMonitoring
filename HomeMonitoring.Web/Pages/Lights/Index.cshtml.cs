@@ -42,7 +42,6 @@ public class IndexModel : PageModel
             {
                 var lights = await _hueService.GetLightsAsync(bridge.IpAddress, bridge.ApiKey);
                 foreach (var kvp in lights)
-                {
                     bridgeModel.Lights.Add(new LightInfo
                     {
                         Id = kvp.Key,
@@ -52,7 +51,6 @@ public class IndexModel : PageModel
                         Brightness = kvp.Value.State.Brightness,
                         IsReachable = kvp.Value.State.Reachable
                     });
-                }
             }
             catch (Exception ex)
             {
@@ -63,27 +61,22 @@ public class IndexModel : PageModel
         }
     }
 
-    public async Task<IActionResult> OnPostToggleLightAsync(string bridgeId, string lightId, bool on, byte? brightness = null)
+    public async Task<IActionResult> OnPostToggleLightAsync(string bridgeId, string lightId, bool on,
+        byte? brightness = null)
     {
         try
         {
             var bridge = await _context.HueBridgeConfigurations
                 .FirstOrDefaultAsync(b => b.BridgeId == bridgeId);
 
-            if (bridge == null)
-            {
-                return BadRequest("Bridge not found");
-            }
+            if (bridge == null) return BadRequest("Bridge not found");
 
             // Create a new state with the on/off property
             var state = new HueLightState { On = on };
-            
+
             // If turning on and brightness is provided, include it
-            if (on && brightness.HasValue)
-            {
-                state.Brightness = brightness.Value;
-            }
-            
+            if (on && brightness.HasValue) state.Brightness = brightness.Value;
+
             await _hueService.UpdateLightStateAsync(bridge.IpAddress, bridge.ApiKey, lightId, state);
             return new JsonResult(new { success = true });
         }
@@ -101,14 +94,11 @@ public class IndexModel : PageModel
             var bridge = await _context.HueBridgeConfigurations
                 .FirstOrDefaultAsync(b => b.BridgeId == bridgeId);
 
-            if (bridge == null)
-            {
-                return BadRequest("Bridge not found");
-            }
+            if (bridge == null) return BadRequest("Bridge not found");
 
             // When setting brightness on an already-on light, ensure it stays on
-            var state = new HueLightState 
-            { 
+            var state = new HueLightState
+            {
                 Brightness = brightness,
                 On = true
             };
@@ -117,7 +107,8 @@ public class IndexModel : PageModel
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set brightness for light {LightId} on bridge {BridgeId}", lightId, bridgeId);
+            _logger.LogError(ex, "Failed to set brightness for light {LightId} on bridge {BridgeId}", lightId,
+                bridgeId);
             return BadRequest("Failed to set brightness");
         }
     }
@@ -129,10 +120,7 @@ public class IndexModel : PageModel
             var bridge = await _context.HueBridgeConfigurations
                 .FirstOrDefaultAsync(b => b.BridgeId == bridgeId);
 
-            if (bridge == null)
-            {
-                return BadRequest("Bridge not found");
-            }
+            if (bridge == null) return BadRequest("Bridge not found");
 
             // Just validate we can connect
             await _hueService.GetLightsAsync(bridge.IpAddress, bridge.ApiKey);

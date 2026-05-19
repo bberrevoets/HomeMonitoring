@@ -6,9 +6,9 @@ namespace HomeMonitoring.SensorAgent.Services;
 
 public class HueLightMonitoringService : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<HueLightMonitoringService> _logger;
     private readonly int _pollingIntervalSeconds;
+    private readonly IServiceProvider _serviceProvider;
 
     public HueLightMonitoringService(
         IServiceProvider serviceProvider,
@@ -53,17 +53,15 @@ public class HueLightMonitoringService : BackgroundService
             .ToListAsync(cancellationToken);
 
         foreach (var bridge in bridges)
-        {
             try
             {
                 await ProcessBridgeAsync(bridge, dbContext, hueService, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing Hue bridge {BridgeId} at {IpAddress}", 
+                _logger.LogError(ex, "Error processing Hue bridge {BridgeId} at {IpAddress}",
                     bridge.BridgeId, bridge.IpAddress);
             }
-        }
     }
 
     private async Task ProcessBridgeAsync(
@@ -78,12 +76,12 @@ public class HueLightMonitoringService : BackgroundService
             var lights = await hueService.GetLightsAsync(bridge.IpAddress, bridge.ApiKey, cancellationToken);
 
             foreach (var (lightId, lightData) in lights)
-            {
                 try
                 {
                     // Find or create the light in database
                     var hueLight = await dbContext.HueLights
-                        .FirstOrDefaultAsync(l => l.HueId == lightId && l.BridgeIpAddress == bridge.IpAddress, cancellationToken);
+                        .FirstOrDefaultAsync(l => l.HueId == lightId && l.BridgeIpAddress == bridge.IpAddress,
+                            cancellationToken);
 
                     if (hueLight == null)
                     {
@@ -101,8 +99,9 @@ public class HueLightMonitoringService : BackgroundService
                         };
                         dbContext.HueLights.Add(hueLight);
                         await dbContext.SaveChangesAsync(cancellationToken);
-                        
-                        _logger.LogInformation("Discovered new Hue light: {LightName} (ID: {LightId}) on bridge {BridgeIp}", 
+
+                        _logger.LogInformation(
+                            "Discovered new Hue light: {LightName} (ID: {LightId}) on bridge {BridgeIp}",
                             lightData.Name, lightId, bridge.IpAddress);
                     }
                     else
@@ -128,27 +127,27 @@ public class HueLightMonitoringService : BackgroundService
                         };
 
                         dbContext.HueLightReadings.Add(reading);
-                        _logger.LogDebug("Recorded reading for light {LightName}: On={On}, Brightness={Brightness}, Reachable={Reachable}",
+                        _logger.LogDebug(
+                            "Recorded reading for light {LightName}: On={On}, Brightness={Brightness}, Reachable={Reachable}",
                             hueLight.Name, reading.On, reading.Brightness, reading.Reachable);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing light {LightId} on bridge {BridgeIp}", 
+                    _logger.LogError(ex, "Error processing light {LightId} on bridge {BridgeIp}",
                         lightId, bridge.IpAddress);
                 }
-            }
 
             await dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning("Bridge {BridgeId} at {IpAddress} is not reachable: {Message}", 
+            _logger.LogWarning("Bridge {BridgeId} at {IpAddress} is not reachable: {Message}",
                 bridge.BridgeId, bridge.IpAddress, ex.Message);
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("Bridge {BridgeId} at {IpAddress} did not respond within timeout", 
+            _logger.LogWarning("Bridge {BridgeId} at {IpAddress} did not respond within timeout",
                 bridge.BridgeId, bridge.IpAddress);
         }
     }
