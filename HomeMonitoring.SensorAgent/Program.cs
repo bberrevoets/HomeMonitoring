@@ -4,6 +4,7 @@ using HomeMonitoring.SensorAgent.Metrics;
 using HomeMonitoring.SensorAgent.Services;
 using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Shared.Models;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
 using ServiceDefaults;
@@ -41,35 +42,31 @@ try
 
     builder.AddSqlServerDbContext<SensorDbContext>("sensorsdb");
 
-    // Configure Email Settings
-    builder.Services.Configure<EmailSettings>(options =>
-    {
-        var mailpitConnectionString = builder.Configuration.GetConnectionString("mailpit");
-        if (!string.IsNullOrEmpty(mailpitConnectionString))
+    // Bind, override host/port from Aspire's mailpit connection string when present,
+    // then validate. ValidateOnStart fails the host before any IHostedService runs.
+    builder.Services
+        .AddOptions<EmailSettings>()
+        .Bind(builder.Configuration.GetSection(EmailSettings.SectionName))
+        .PostConfigure(opts =>
         {
-            // Parse Aspire-provided connection string (format: "smtp://localhost:port")
-            // Remove the "endpoint=" part
-            var uriPart = mailpitConnectionString["endpoint=".Length..];
+            var cs = builder.Configuration.GetConnectionString("mailpit");
+            if (string.IsNullOrEmpty(cs)) return;
 
-            // Parse with Uri
-            var uri = new Uri(uriPart);
-            options.SmtpHost = uri.Host;
-            options.SmtpPort = uri.Port;
-        }
-        else
-        {
-            // Fallback to default values
-            options.SmtpHost = "localhost";
-            options.SmtpPort = 1025;
-        }
+            // Aspire/CommunityToolkit connection strings come through as either
+            // "Endpoint=smtp://host:port" (any casing) or a bare "smtp://host:port".
+            var schemeIdx = cs.IndexOf("://", StringComparison.Ordinal);
+            if (schemeIdx < 0) return;
 
-        options.UseSsl = false;
-        options.FromEmail = "homemonitoring@localhost";
-        options.FromName = "Home Monitoring System";
-        options.MonitoringEmail = builder.Configuration["Monitoring:Email"] ?? "admin@example.com";
-        options.DeviceOfflineThresholdMinutes =
-            builder.Configuration.GetValue("Monitoring:DeviceOfflineThresholdMinutes", 30);
-    });
+            var equalsIdx = cs.LastIndexOf('=', schemeIdx - 1);
+            var uriPart = equalsIdx >= 0 ? cs[(equalsIdx + 1)..] : cs;
+
+            if (!Uri.TryCreate(uriPart, UriKind.Absolute, out var uri)) return;
+
+            opts.SmtpHost = uri.Host;
+            opts.SmtpPort = uri.Port;
+        })
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
 
     // Register HTTP client
     builder.Services.AddHttpClient();
@@ -108,9 +105,17 @@ try
     var host = builder.Build();
     host.Run();
 }
+catch (OptionsValidationException ex)
+{
+    foreach (var failure in ex.Failures)
+        Log.Fatal("EmailSettings validation failed: {Failure}", failure);
+    Log.Fatal("Stopping HomeMonitoring SensorAgent because email configuration is invalid.");
+    Environment.ExitCode = 1;
+}
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    Environment.ExitCode = 1;
 }
 finally
 {

@@ -21,7 +21,9 @@ var seq = builder.AddSeq("seq")
 
 var mailPit = builder.AddMailPit("mailpit")
     .WithLifetime(ContainerLifetime.Persistent)
-    .WithDataVolume("HomeMonitoring-MailPit");
+    .WithDataVolume("HomeMonitoring-MailPit")
+    .WithEnvironment("MP_SMTP_AUTH_ALLOW_INSECURE", "true")
+    .WithEnvironment("MP_SMTP_AUTH_ACCEPT_ANY", "true");
 
 var sensorAgent = builder.AddProject<HomeMonitoring_SensorAgent>("HomeMonitoring-SensorAgent")
     .WaitFor(seq)

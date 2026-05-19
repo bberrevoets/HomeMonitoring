@@ -187,13 +187,11 @@ public class EmailService(IOptions<EmailSettings> emailSettings, ILogger<EmailSe
 
             using var client = new SmtpClient();
 
-            // For Mailpit, we don't need authentication
             await client.ConnectAsync(_emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.UseSsl,
                 cancellationToken);
 
-            if (!string.IsNullOrWhiteSpace(_emailSettings.SmtpUsername))
-                await client.AuthenticateAsync(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword,
-                    cancellationToken);
+            await client.AuthenticateAsync(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword,
+                cancellationToken);
 
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
