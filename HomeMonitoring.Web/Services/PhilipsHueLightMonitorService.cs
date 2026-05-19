@@ -32,12 +32,23 @@ namespace HomeMonitoring.Web.Services
                 try
                 {
                     await CheckForLightChanges(stoppingToken);
-                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken); // Poll every 2 seconds
+                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in Philips Hue light monitor service");
-                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken); // Wait longer on error
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                 }
             }
         }
