@@ -78,6 +78,10 @@ public static class Extensions
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
+                    // Capture custom ActivitySources across the solution's services
+                    // (e.g. HomeMonitoring.SensorAgent, HomeMonitoring.MigrationService), including
+                    // the worker apps that have no ASP.NET Core request spans.
+                    .AddSource("HomeMonitoring.*")
                     .AddAspNetCoreInstrumentation(instrumentationOptions =>
                         // Exclude health check requests from tracing
                         instrumentationOptions.Filter = context =>
@@ -86,7 +90,9 @@ public static class Extensions
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation()
+                    // Traces EF Core / Microsoft.Data.SqlClient database commands as spans.
+                    .AddSqlClientInstrumentation();
             });
 
         builder.AddOpenTelemetryExporters();

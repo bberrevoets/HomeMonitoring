@@ -12,7 +12,7 @@ public class Worker(
     IHostApplicationLifetime hostApplicationLifetime)
     : BackgroundService
 {
-    private const string ActivitySourceName = "Migrations";
+    private const string ActivitySourceName = "HomeMonitoring.MigrationService";
     private static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
