@@ -74,7 +74,11 @@
                 <td>
                     <a asp-page="./Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
                     <a asp-page="./Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
-                    <a asp-page="./Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
+                    <button type="button" class="btn btn-sm btn-danger"
+                            data-bs-toggle="modal" data-bs-target="#deleteDeviceModal"
+                            data-device-id="@device.Id" data-device-name="@device.Name">
+                        Delete
+                    </button>
                 </td>
             </tr>
         }
@@ -89,4 +93,40 @@ else
         <hr>
         <p class="mb-0">Currently supported devices: HWE-P1 (P1 Meter) and HWE-SKT (Energy Socket)</p>
     </div>
+}
+
+<!-- Shared delete-confirmation modal; populated per-device via data-* attributes on the trigger button. -->
+<div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-labelledby="deleteDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteDeviceModalLabel">Delete device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You are about to delete <strong id="deleteDeviceName"></strong>.</p>
+                <div class="alert alert-danger mb-0" role="alert">
+                    All collected data (energy readings) for this device will be
+                    <strong>permanently deleted and cannot be recovered.</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" asp-page-handler="Delete">
+                    <input type="hidden" name="id" id="deleteDeviceId" />
+                    <button type="submit" class="btn btn-danger">Delete permanently</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('deleteDeviceModal').addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            document.getElementById('deleteDeviceId').value = button.getAttribute('data-device-id');
+            document.getElementById('deleteDeviceName').textContent = button.getAttribute('data-device-name');
+        });
+    </script>
 }
