@@ -103,7 +103,7 @@ Production is deployed by the **Deploy to on-prem** workflow
 ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)), triggered manually
 (`workflow_dispatch`). Because the target box is on a private LAN, the job runs on a
 **self-hosted runner installed on the box itself** — it builds, injects the secrets, packages
-the tarballs, and calls `~/deploy.sh` locally (no scp/ssh, no inbound port).
+the tarballs, and runs the checked-out `deploy/deploy.sh` locally (no scp/ssh, no inbound port).
 
 One-time setup:
 

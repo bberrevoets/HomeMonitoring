@@ -3,7 +3,7 @@ name: Deploy to on-prem
 # Manual, on-demand deploy. Runs on a self-hosted runner installed on the on-prem
 # ARM64 box, so the deploy is entirely local (no scp/ssh, no inbound network path).
 # The runner builds, replaces the "InSecrets" markers with real values pulled from
-# GitHub Actions Secrets, packages the tarballs, and hands off to ~/deploy.sh.
+# GitHub Actions Secrets, packages the tarballs, and runs the checked-out deploy/deploy.sh.
 on:
   workflow_dispatch: {}
 
@@ -56,4 +56,4 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/hm-deploy
           cp migration.tar.gz agent.tar.gz web.tar.gz /tmp/hm-deploy/
-          "$HOME/deploy.sh"
+          bash deploy/deploy.sh
