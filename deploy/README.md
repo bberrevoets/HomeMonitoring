@@ -44,6 +44,8 @@ migrations — `deploy.sh` does this for you, and aborts without starting the ap
 - [`deploy.sh`](deploy.sh) — server-side deploy helper (see below).
 - [`systemd/HomeMonitoringMigration.service`](systemd/HomeMonitoringMigration.service) — the one-shot migration unit.
 - `systemd/<app>.service.d/10-wait-migration.conf` — the ordering drop-ins.
+- `systemd/HomeMonitoringDashboard.service.d/20-environment.conf` — host settings for the dashboard
+  (Kestrel listen address; optional OTLP endpoint).
 - `systemd/HomeMonitoring{SensorAgent,Dashboard}.service` — reference copies of the base app units.
 
 ## First-time setup on a new host
@@ -62,12 +64,36 @@ sudo cp deploy/systemd/HomeMonitoringSensorAgent.service.d/10-wait-migration.con
         /etc/systemd/system/HomeMonitoringSensorAgent.service.d/
 sudo cp deploy/systemd/HomeMonitoringDashboard.service.d/10-wait-migration.conf \
         /etc/systemd/system/HomeMonitoringDashboard.service.d/
+# Host settings the deploy must not manage (see "Host-specific settings" below) — most importantly
+# the dashboard's HTTP listen address, so it stays reachable after a deploy replaces appsettings.json:
+sudo cp deploy/systemd/HomeMonitoringDashboard.service.d/20-environment.conf \
+        /etc/systemd/system/HomeMonitoringDashboard.service.d/
 sudo systemctl daemon-reload
 sudo systemctl enable HomeMonitoringMigration.service \
                       HomeMonitoringSensorAgent.service HomeMonitoringDashboard.service
 # 4. Copy deploy.sh to the host home dir:
 scp deploy/deploy.sh server:~/ && ssh server 'chmod +x ~/deploy.sh'
 ```
+
+## Host-specific settings (listen address, OTLP)
+
+The deploy ships and overwrites each app's `appsettings.json`, so anything that must differ per host
+and must **not** be wiped by a deploy lives in the systemd unit instead — via the
+`HomeMonitoringDashboard.service.d/20-environment.conf` drop-in:
+
+- **`ASPNETCORE_URLS=http://0.0.0.0:5000`** — the dashboard's HTTP listen address. Without it Kestrel
+  binds `localhost` only and the site is unreachable from the LAN. Kept in the unit so a deploy can't
+  remove it, and because it's ignored under Aspire (dev is unaffected).
+- **`OTEL_EXPORTER_OTLP_ENDPOINT`** (optional, commented by default) — the OTLP collector for traces
+  and metrics. The OpenTelemetry exporter reads it from the **environment**, not `appsettings.json`,
+  so it belongs here too. Uncomment and set your collector host to enable export (add the same line to
+  a SensorAgent drop-in to restore its telemetry).
+
+Apply changes with `sudo systemctl daemon-reload && sudo systemctl restart HomeMonitoringDashboard`.
+
+> Everything else an app needs in production must live in the committed `appsettings.json` (non-secret)
+> or the `InSecrets` set (secret): a deploy replaces the on-server `appsettings.json`, so any config
+> that exists only on the box is lost on the next deploy.
 
 ## Secrets and the `InSecrets` convention
 
