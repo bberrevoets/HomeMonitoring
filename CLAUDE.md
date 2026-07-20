@@ -103,7 +103,8 @@ Five .NET 10 projects wired together by Aspire:
 Production does **not** use Aspire. The three services are published **self-contained for
 `linux-arm64`** and run as `systemd` units (`HomeMonitoringMigration` one-shot →
 `HomeMonitoringSensorAgent` + `HomeMonitoringDashboard`), mirroring Aspire's migrate-then-start
-ordering via `Before=`/`After=` drop-ins. Host-specific config and secrets live in each app's
+ordering via a `Before=` on the migration unit plus `After=`/`Requires=` drop-ins on the apps
+(so the apps don't start if migrations fail). Host-specific config and secrets live in each app's
 `appsettings.Production.json` **on the server** (never committed). Deploy artifacts (unit files +
 `deploy.sh`) are versioned in [deploy/](deploy/README.md), which is the source of truth for the
 server layout and deploy/rollback procedure.

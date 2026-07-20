@@ -26,13 +26,16 @@ In Aspire the migration runner completes before the apps start (`WaitForCompleti
 ordering is reproduced on the server with `systemd`:
 
 - `HomeMonitoringMigration.service` declares `Before=` both app units.
-- Each app unit gets an `After=` + `Wants=` drop-in
+- Each app unit gets an `After=` + `Requires=` drop-in
   (`<unit>.service.d/10-wait-migration.conf`), added via `systemctl edit`, so the base unit
   files stay untouched.
 
-On boot, `systemd` runs the migration one-shot first, then starts the agent and dashboard.
-Because the one-shot uses `RemainAfterExit=yes`, on a **live** host you must **restart** it
-(not `start`) to re-apply migrations — `deploy.sh` does this for you.
+On boot, `systemd` runs the migration one-shot first, then starts the agent and dashboard. The
+dependency is `Requires=` (not `Wants=`), so **if the migration fails the apps are not started** —
+they never run against an unmigrated/incompatible schema (a failed boot leaves the stack down
+until the migration can complete, which is the safe outcome). Because the one-shot uses
+`RemainAfterExit=yes`, on a **live** host you must **restart** it (not `start`) to re-apply
+migrations — `deploy.sh` does this for you, and aborts without starting the apps if it fails.
 
 ## Files here
 

@@ -57,10 +57,14 @@ have web.tar.gz       && { say "Updating Web dashboard";   sync_app web.tar.gz  
 
 # Always (re)run migrations before the apps come up. RemainAfterExit means the
 # one-shot must be *restarted* to re-run on a live host (a reboot re-runs it).
+# If migrations fail, abort WITHOUT starting the apps — they must never run against an
+# unmigrated schema. The apps are already stopped; the previous release is in <dir>.bak.
 say "Applying database migrations"
 sudo systemctl restart "$MIG_SVC"
 if [[ "$(systemctl is-active "$MIG_SVC" || true)" != "active" ]]; then
-  echo "  WARNING: $MIG_SVC did not finish cleanly — inspect: journalctl -u $MIG_SVC -n 50" >&2
+  die "$MIG_SVC failed — apps left stopped to avoid running against an unmigrated schema.
+  Inspect: journalctl -u $MIG_SVC -n 50
+  Roll back a synced app from its ~/<App>Linux.bak snapshot if needed."
 fi
 
 say "Starting application services"
