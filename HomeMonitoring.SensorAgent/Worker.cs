@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using HomeMonitoring.SensorAgent.Metrics;
 using HomeMonitoring.SensorAgent.Services;
@@ -15,6 +16,13 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly SensorAgentMetrics _metrics;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+
+    // Firmware/API version change rarely, so refresh them a few times a day rather than every poll;
+    // after a failed refresh, back off (retry interval) instead of re-hitting /api on every poll. The
+    // per-device next-refresh time is tracked in-memory (re-fetched once after a restart, which is fine).
+    private readonly TimeSpan _deviceInfoRefreshInterval = TimeSpan.FromHours(6);
+    private readonly TimeSpan _deviceInfoRetryInterval = TimeSpan.FromMinutes(30);
+    private readonly ConcurrentDictionary<int, DateTime> _nextDeviceInfoRefresh = new();
     private readonly IServiceProvider _serviceProvider;
 
     public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, SensorAgentMetrics metrics)
@@ -43,127 +51,188 @@ public class Worker : BackgroundService
         // instrumentation) and the DB writes (SqlClient instrumentation) nest underneath.
         using var pollActivity = ActivitySource.StartActivity("PollDevices");
 
+        List<Device> devices;
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
+
+            // Detached snapshot of the enabled devices; each is polled below in its own scope.
+            devices = await dbContext.Devices
+                .AsNoTracking()
+                .Where(d => d.IsEnabled)
+                .ToListAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            pollActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error loading devices for polling");
+            return;
+        }
+
+        pollActivity?.SetTag("devices.count", devices.Count);
+
+        if (devices.Count == 0)
+        {
+            _logger.LogDebug("No devices configured yet");
+            return;
+        }
+
+        _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
+
+        // Poll every device concurrently so a single slow or unreachable device can't delay the others
+        // (which previously starved healthy devices past the offline threshold). DbContext is not
+        // thread-safe, so each poll runs in its own DI scope with its own context. Each task swallows
+        // its own failures, so WhenAll never faults the polling loop.
+        await Task.WhenAll(devices.Select(device => PollSingleDeviceAsync(device, stoppingToken)));
+    }
+
+    private async Task PollSingleDeviceAsync(Device device, CancellationToken stoppingToken)
+    {
+        using var deviceActivity = ActivitySource.StartActivity("PollDevice");
+        deviceActivity?.SetTag("device.name", device.Name);
+        deviceActivity?.SetTag("device.ip_address", device.IpAddress);
+        deviceActivity?.SetTag("device.product_type", device.ProductType.ToString());
+
+        // Skip unsupported devices (defensive — the query already filters to enabled devices).
+        if (device.ProductType != HomeWizardProductType.HWE_P1 &&
+            device.ProductType != HomeWizardProductType.HWE_SKT)
+        {
+            _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}",
+                device.ProductType, device.Name);
+            return;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
             var homeWizardService = scope.ServiceProvider.GetRequiredService<IHomeWizardService>();
 
-            // Get all enabled devices
-            var devices = await dbContext.Devices
-                .Where(d => d.IsEnabled)
-                .ToListAsync(stoppingToken);
+            var energyData = await homeWizardService.GetEnergyDataAsync(
+                device.IpAddress,
+                device.ProductType,
+                stoppingToken);
 
-            pollActivity?.SetTag("devices.count", devices.Count);
+            var tracked = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == device.Id, stoppingToken);
+            if (tracked is null) return; // Device was deleted mid-cycle.
 
-            if (devices.Count == 0)
+            // Store the reading and mark the device as seen - it is responding.
+            dbContext.EnergyReadings.Add(new EnergyReading
             {
-                _logger.LogDebug("No devices configured yet");
-                return;
-            }
+                DeviceId = tracked.Id,
+                Timestamp = DateTime.UtcNow,
+                ActivePowerW = energyData.ActivePowerW ?? 0,
+                TotalPowerImportT1KWh = energyData.TotalPowerImportT1KWh,
+                TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
+                TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
+                TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
+                TotalGasM3 = energyData.TotalGasM3
+            });
+            tracked.LastSeenAt = DateTime.UtcNow;
 
-            _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
+            // Persist last-known WiFi status (free — it's already in the energy response) so the
+            // Devices/Details page can show it without contacting the connection-limited device.
+            tracked.WifiSsid = energyData.WifiSsid;
+            tracked.WifiStrength = energyData.WifiStrength;
 
-            foreach (var device in devices)
+            // Refresh firmware/API info a few times a day (and the first time we reach the device),
+            // reusing this poll's keep-alive connection so we don't open a competing one.
+            if (!_nextDeviceInfoRefresh.TryGetValue(device.Id, out var nextRefresh) || DateTime.UtcNow >= nextRefresh)
             {
-                using var deviceActivity = ActivitySource.StartActivity("PollDevice");
-                deviceActivity?.SetTag("device.name", device.Name);
-                deviceActivity?.SetTag("device.ip_address", device.IpAddress);
-                deviceActivity?.SetTag("device.product_type", device.ProductType.ToString());
-
-                var stopwatch = Stopwatch.StartNew();
                 try
                 {
-                    // Skip unsupported devices
-                    if (device.ProductType != HomeWizardProductType.HWE_P1 &&
-                        device.ProductType != HomeWizardProductType.HWE_SKT)
-                    {
-                        _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}",
-                            device.ProductType, device.Name);
-                        continue;
-                    }
-
-                    var energyData = await homeWizardService.GetEnergyDataAsync(
-                        device.IpAddress,
-                        device.ProductType,
-                        stoppingToken);
-
-                    // Store the reading
-                    var reading = new EnergyReading
-                    {
-                        DeviceId = device.Id,
-                        Timestamp = DateTime.UtcNow,
-                        ActivePowerW = energyData.ActivePowerW ?? 0,
-                        TotalPowerImportT1KWh = energyData.TotalPowerImportT1KWh,
-                        TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
-                        TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
-                        TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
-                        TotalGasM3 = energyData.TotalGasM3
-                    };
-
-                    dbContext.EnergyReadings.Add(reading);
-
-                    // Update last seen time - device is responding
-                    device.LastSeenAt = DateTime.UtcNow;
-
-                    await dbContext.SaveChangesAsync(stoppingToken);
-
-                    // Record successful metrics
-                    _metrics.IncrementSensorReadingsProcessed();
-                    _metrics.RecordProcessingTime(stopwatch.Elapsed.TotalSeconds);
-
-                    _logger.LogInformation(
-                        "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
-                        device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
+                    var info = await homeWizardService.GetDeviceInfoAsync(device.IpAddress, stoppingToken);
+                    tracked.FirmwareVersion = info.FirmwareVersion;
+                    tracked.ApiVersion = info.ApiVersion;
+                    tracked.DeviceInfoUpdatedAt = DateTime.UtcNow;
+                    _nextDeviceInfoRefresh[device.Id] = DateTime.UtcNow + _deviceInfoRefreshInterval;
                 }
-                catch (NotSupportedException ex)
+                // Firmware refresh is best-effort — an offline device, a non-2xx /api response, or
+                // bad/incomplete JSON (e.g. older firmware omitting a required field) must NOT discard
+                // the energy reading saved below. Swallow everything except a shutdown cancellation, and
+                // back off so a persistent failure doesn't re-hit /api (and re-log) on every poll.
+                catch (Exception ex) when (!(ex is OperationCanceledException && stoppingToken.IsCancellationRequested))
                 {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
-                        device.Name, ex.Message);
-
-                    // Disable unsupported devices to avoid repeated errors
-                    device.IsEnabled = false;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                }
-                catch (TaskCanceledException)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not responding (timeout)");
-                    // This is expected when device is offline or not responding
-                    // Don't update LastSeenAt - let the monitoring service handle alerts
-                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                catch (HttpRequestException)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not reachable");
-                    // Network errors are expected when device is offline
-                    // Don't update LastSeenAt - let the monitoring service handle alerts
-                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                catch (Exception ex)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    // Only log actual errors, not expected communication failures
-                    _logger.LogWarning(ex,
-                        "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                finally
-                {
-                    stopwatch.Stop();
+                    _nextDeviceInfoRefresh[device.Id] = DateTime.UtcNow + _deviceInfoRetryInterval;
+                    _logger.LogDebug(ex,
+                        "Could not refresh device info for {DeviceName} ({IpAddress}); keeping the energy reading",
+                        device.Name, device.IpAddress);
                 }
             }
+
+            await dbContext.SaveChangesAsync(stoppingToken);
+
+            // Record successful metrics
+            _metrics.IncrementSensorReadingsProcessed();
+            _metrics.RecordProcessingTime(stopwatch.Elapsed.TotalSeconds);
+
+            _logger.LogInformation(
+                "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
+                device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Host is shutting down - not a device error.
+        }
+        catch (NotSupportedException ex)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
+                device.Name, ex.Message);
+
+            // Disable unsupported devices to avoid repeated errors.
+            await DisableDeviceAsync(device.Id, device.Name, stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not responding (timeout)");
+            // Expected when a device is offline/not responding - DeviceMonitoringService owns alerts.
+            _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
+                device.Name, device.ProductType, device.IpAddress);
+        }
+        catch (HttpRequestException)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not reachable");
+            // Network errors are expected when a device is offline - DeviceMonitoringService owns alerts.
+            _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
+                device.Name, device.ProductType, device.IpAddress);
         }
         catch (Exception ex)
         {
-            pollActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _logger.LogError(ex, "Error during device polling");
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Only log actual errors, not expected communication failures
+            _logger.LogWarning(ex,
+                "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
+                device.Name, device.ProductType, device.IpAddress);
+        }
+        finally
+        {
+            stopwatch.Stop();
+        }
+    }
+
+    private async Task DisableDeviceAsync(int deviceId, string deviceName, CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
+
+            var tracked = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, stoppingToken);
+            if (tracked is null) return;
+
+            tracked.IsEnabled = false;
+            await dbContext.SaveChangesAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to disable unsupported device {DeviceName}", deviceName);
         }
     }
 }

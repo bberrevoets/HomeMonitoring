@@ -57,6 +57,14 @@ try
     // Add HttpClient for device communication
     builder.Services.AddHttpClient();
 
+    // The dashboard polls the Hue bridge every 2s; strip resilience so Polly doesn't log a
+    // per-attempt telemetry line for every local call. (The device Details page reads HomeWizard status
+    // from the DB and never contacts the device, so no HomeWizard client is registered here.)
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
+    builder.Services.AddHttpClient(PhilipsHueService.HttpClientName)
+        .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
     // Add configuration
     builder.Services.Configure<DashboardSettings>(
         builder.Configuration.GetSection(DashboardSettings.SectionName));

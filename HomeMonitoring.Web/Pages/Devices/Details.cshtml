@@ -1,0 +1,161 @@
+@page "{id:int}"
+@using HomeMonitoring.Shared.Models
+@model DetailsModel
+@{
+    ViewData["Title"] = "Device Details";
+    var timeSinceLastSeen = DateTime.UtcNow - Model.Device.LastSeenAt;
+    var isRecent = timeSinceLastSeen.TotalMinutes < 5;
+}
+
+<h1>Device Details</h1>
+<p class="text-muted">@Model.Device.Name</p>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-hdd-network"></i> Device
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Name</dt>
+                    <dd class="col-sm-7">@Model.Device.Name</dd>
+
+                    <dt class="col-sm-5">Type</dt>
+                    <dd class="col-sm-7">
+                        @switch (Model.Device.ProductType)
+                        {
+                            case HomeWizardProductType.HWE_P1:
+                                <span class="badge bg-primary">P1 Meter</span>
+                                break;
+                            case HomeWizardProductType.HWE_SKT:
+                                <span class="badge bg-info">Energy Socket</span>
+                                break;
+                            default:
+                                <span class="badge bg-secondary">@Model.Device.ProductTypeRaw</span>
+                                break;
+                        }
+                    </dd>
+
+                    <dt class="col-sm-5">IP Address</dt>
+                    <dd class="col-sm-7">@Model.Device.IpAddress</dd>
+
+                    <dt class="col-sm-5">Serial Number</dt>
+                    <dd class="col-sm-7">@Model.Device.SerialNumber</dd>
+
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        @if (Model.Device.IsEnabled)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">Disabled</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-5">Discovered</dt>
+                    <dd class="col-sm-7">@Model.Device.DiscoveredAt.ToLocalTime().ToString("g")</dd>
+
+                    <dt class="col-sm-5">Last Seen</dt>
+                    <dd class="col-sm-7">
+                        <span class="@(isRecent ? "text-success" : "text-muted")">
+                            @Model.Device.LastSeenAt.ToLocalTime().ToString("g")
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-broadcast-pin"></i> Status</span>
+                <a asp-page="./Details" asp-route-id="@Model.Device.Id" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </a>
+            </div>
+            <div class="card-body">
+                @if (!Model.HasStatus)
+                {
+                    <div class="alert alert-secondary mb-0" role="alert">
+                        <i class="bi bi-hourglass-split"></i>
+                        No status collected yet &mdash; the SensorAgent will fill this in on its next
+                        successful poll of the device.
+                    </div>
+                }
+                else
+                {
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Firmware</dt>
+                        <dd class="col-sm-7">@(Model.Device.FirmwareVersion ?? "—")</dd>
+
+                        <dt class="col-sm-5">API Version</dt>
+                        <dd class="col-sm-7">@(Model.Device.ApiVersion ?? "—")</dd>
+
+                        <dt class="col-sm-5">WiFi Network</dt>
+                        <dd class="col-sm-7">@(Model.Device.WifiSsid ?? "—")</dd>
+
+                        <dt class="col-sm-5">WiFi Strength</dt>
+                        <dd class="col-sm-7">
+                            @if (Model.Device.WifiStrength is int strength)
+                            {
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-wifi"></i>
+                                    <div class="progress flex-grow-1" style="height: 8px; max-width: 120px;">
+                                        <div class="progress-bar" role="progressbar" style="width: @strength%"
+                                             aria-valuenow="@strength" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span>@strength%</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <text>—</text>
+                            }
+                        </dd>
+
+                        <dt class="col-sm-5">Current Power</dt>
+                        <dd class="col-sm-7">
+                            @(Model.LatestActivePowerW is double p ? $"{p:0.##} W" : "—")
+                        </dd>
+                    </dl>
+                    <p class="text-muted small mb-0 mt-3">
+                        Last polled @Model.Device.LastSeenAt.ToLocalTime().ToString("g")
+                        @if (Model.Device.DeviceInfoUpdatedAt is DateTime info)
+                        {
+                            <text>&middot; firmware checked @info.ToLocalTime().ToString("g")</text>
+                        }
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-database"></i> Collected data
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Total Readings</dt>
+                    <dd class="col-sm-9">@Model.ReadingCount.ToString("N0")</dd>
+
+                    <dt class="col-sm-3">First Reading</dt>
+                    <dd class="col-sm-9">@(Model.FirstReadingAt?.ToLocalTime().ToString("g") ?? "—")</dd>
+
+                    <dt class="col-sm-3">Latest Reading</dt>
+                    <dd class="col-sm-9">@(Model.LastReadingAt?.ToLocalTime().ToString("g") ?? "—")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a asp-page="./Edit" asp-route-id="@Model.Device.Id" class="btn btn-primary">Edit</a>
+    <a asp-page="./Index" class="btn btn-secondary">Back to List</a>
+</div>

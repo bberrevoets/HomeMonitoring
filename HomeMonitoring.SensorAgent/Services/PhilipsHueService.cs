@@ -9,6 +9,12 @@ namespace HomeMonitoring.SensorAgent.Services;
 
 public class PhilipsHueService : IPhilipsHueService
 {
+    // Named HttpClient for talking to the Hue bridge on the LAN. Registered (in each host's
+    // Program.cs) without the standard resilience handler: the dashboard polls every 2s, and the
+    // handler's per-attempt Polly telemetry is pure log noise for a local call that already handles
+    // its own failures.
+    public const string HttpClientName = "philipshue";
+
     private readonly SensorDbContext _dbContext;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -33,7 +39,7 @@ public class PhilipsHueService : IPhilipsHueService
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = TimeSpan.FromSeconds(10);
 
             var response = await httpClient.GetAsync("https://discovery.meethue.com/", cancellationToken);
@@ -56,7 +62,7 @@ public class PhilipsHueService : IPhilipsHueService
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = TimeSpan.FromSeconds(5);
 
             var response = await httpClient.GetAsync($"http://{bridgeIp}/api/{apiKey}/lights", cancellationToken);
@@ -79,7 +85,7 @@ public class PhilipsHueService : IPhilipsHueService
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = TimeSpan.FromSeconds(5);
 
             var response =
@@ -101,7 +107,7 @@ public class PhilipsHueService : IPhilipsHueService
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = TimeSpan.FromSeconds(5);
 
             var json = JsonSerializer.Serialize(state, _jsonOptions);
@@ -123,7 +129,7 @@ public class PhilipsHueService : IPhilipsHueService
     {
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
+            var httpClient = _httpClientFactory.CreateClient(HttpClientName);
             httpClient.Timeout = TimeSpan.FromSeconds(30);
 
             var requestBody = new

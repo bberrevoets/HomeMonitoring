@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Author: *Bert Berrevoets*
 
+- View a device's full details from the **Devices** page: a new `Devices/Details` page (wired to the
+  per-row **Details** button) shows the device's last-known status — firmware, API version, WiFi
+  SSID/strength and current power — that the SensorAgent persists as it polls (read from the DB; the
+  device itself accepts only one client connection, held by the agent), plus statistics over its
+  collected readings.
+- Delete a device from the **Devices** page: the per-row **Delete** button opens a confirmation modal
+  warning that all collected data is permanently deleted, then removes the device and cascade-deletes
+  its `EnergyReading` rows.
 - Rename a device from the **Devices** page: a new `Devices/Edit` page (wired to the existing per-row
   **Edit** button) lets you change a device's friendly name. The name is required and length-validated,
   persisted directly, and never overwritten by the polling `Worker` or HomeWizard discovery.
@@ -31,6 +39,12 @@ Author: *Bert Berrevoets*
 
 Author: *Bert Berrevoets*
 
+- The SensorAgent now polls all HomeWizard devices **concurrently** (one DI scope + `DbContext` per
+  device) instead of sequentially, so a slow or unreachable device no longer delays the others.
+- The SensorAgent now persists each device's last-known status (WiFi every poll; firmware/API a few
+  times a day) on the `Device` row, so the dashboard and Details pages can show it without contacting
+  the connection-limited device.
+- Raised the SensorAgent `Email:DeviceOfflineThresholdMinutes` from 1 to 5.
 - Renamed Serilog enrichment property `Application` to `Service` across Web and SensorAgent.
 - Upgraded to .NET 10 GA, Aspire 13, and EF Core 10.
 - Bumped NuGet packages across all projects.
@@ -40,6 +54,20 @@ Author: *Bert Berrevoets*
 
 Author: *Bert Berrevoets*
 
+- The device **Details** page showed "unreachable" even while the device was being polled
+  successfully. HomeWizard sockets accept only ~one client connection, which the SensorAgent holds, so
+  the web page could never reach the device directly. The Details page now reads the device's last-known
+  status (firmware / WiFi / power) from the DB — persisted by the agent as it polls — and never contacts
+  the device (adds a `Device` status-columns migration).
+- Devices that were online were intermittently reported **offline**. Fixed by concurrent polling
+  (above), a dedicated resilience-free `HttpClient` for device calls (no retries/circuit-breaker for
+  expected-offline LAN devices), and a startup-grace window in `DeviceMonitoringService` so a restart's
+  stale `LastSeenAt` can't fire a false alert before the `Worker` re-polls.
+- The **Devices** list and **Details** pages are served `no-store`, so their volatile Last Seen and
+  reading-count values are never shown from the browser's HTTP or back-forward cache.
+- Removed resilience-handler log spam on LAN polling: HomeWizard device polls no longer retry (and log
+  a Warning) for every expected-offline device, and Philips Hue polling no longer emits a per-attempt
+  Polly telemetry line every 2s.
 - Dark mode no longer flashes the light theme on every page navigation (FOUC). The stored theme is
   now applied by an inline, render-blocking script in the layout `<head>` before first paint,
   instead of by `theme-toggle.js` at the end of `<body>` on `DOMContentLoaded`.
