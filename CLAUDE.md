@@ -89,7 +89,7 @@ Five .NET 10 projects wired together by Aspire:
   `Monitoring:HealthCheckIntervalMinutes`.
 - **Secrets convention**: each app has a single committed `appsettings.json` where every secret value
   is the literal marker `"InSecrets"` (`ConnectionStrings:sensorsdb`/`seq`/`mailpit`, `SeqApiKey`,
-  `Email:SmtpUsername`/`SmtpPassword`). Real dev values come from **User Secrets** (loaded only in the
+  `Email:SmtpUsername`/`SmtpPassword`, `OTEL_EXPORTER_OTLP_ENDPOINT`). Real dev values come from **User Secrets** (loaded only in the
   Development environment; Aspire also injects the `ConnectionStrings__*` env vars, which override the
   markers). Do **not** add `appsettings.Development.json`/`appsettings.Production.json` — they are
   gitignored. In production the deploy substitutes the markers (see below).
@@ -117,10 +117,9 @@ runner installed on the box** (the target is on a private LAN): it publishes, re
 (config-key path joined with `__`) via
 [.github/scripts/replace-secrets.py](.github/scripts/replace-secrets.py), packages the tarballs, and
 calls `deploy.sh` locally. `deploy.sh` ships the tokenized `appsettings.json` (chmod 600) — there is
-no `appsettings.Production.json`. Because the deploy **overwrites** `appsettings.json`, host settings
-that must survive a deploy and must not affect Aspire dev — the dashboard's `ASPNETCORE_URLS` listen
-address (Kestrel binds `localhost` only without it) and `OTEL_EXPORTER_OTLP_ENDPOINT` (read from the
-environment, not config) — live in a systemd drop-in
+no `appsettings.Production.json`. Because the deploy **overwrites** `appsettings.json`, the dashboard's `ASPNETCORE_URLS` listen
+address (Kestrel binds `localhost` only without it, and it can't be dev-safely committed) lives in a
+systemd drop-in
 ([HomeMonitoringDashboard.service.d/20-environment.conf](deploy/systemd/HomeMonitoringDashboard.service.d/20-environment.conf)),
 **not** in `appsettings.json`. Deploy artifacts (unit files + `deploy.sh`) are versioned in
 [deploy/](deploy/README.md), the source of truth for the server layout, secret names, and
