@@ -87,6 +87,12 @@ Five .NET 10 projects wired together by Aspire:
   section (bound to `EmailSettings`, **validated at startup** — `SmtpHost`/`SmtpPort` are filled
   from the Aspire `mailpit` connection string) plus `Monitoring:PollingIntervalSeconds` and
   `Monitoring:HealthCheckIntervalMinutes`.
+- **Secrets convention**: each app has a single committed `appsettings.json` where every secret value
+  is the literal marker `"InSecrets"` (`ConnectionStrings:sensorsdb`/`seq`/`mailpit`, `SeqApiKey`,
+  `Email:SmtpUsername`/`SmtpPassword`). Real dev values come from **User Secrets** (loaded only in the
+  Development environment; Aspire also injects the `ConnectionStrings__*` env vars, which override the
+  markers). Do **not** add `appsettings.Development.json`/`appsettings.Production.json` — they are
+  gitignored. In production the deploy substitutes the markers (see below).
 - `Device.ProductType` (enum `HomeWizardProductType`) is persisted as **string** (see `OnModelCreating`).
   When polling, the `Worker` skips any product type other than `HWE_P1` or `HWE_SKT` and disables a
   device on `NotSupportedException` — don't add new product types without updating the switch in
@@ -104,7 +110,13 @@ Production does **not** use Aspire. The three services are published **self-cont
 `linux-arm64`** and run as `systemd` units (`HomeMonitoringMigration` one-shot →
 `HomeMonitoringSensorAgent` + `HomeMonitoringDashboard`), mirroring Aspire's migrate-then-start
 ordering via a `Before=` on the migration unit plus `After=`/`Requires=` drop-ins on the apps
-(so the apps don't start if migrations fail). Host-specific config and secrets live in each app's
-`appsettings.Production.json` **on the server** (never committed). Deploy artifacts (unit files +
-`deploy.sh`) are versioned in [deploy/](deploy/README.md), which is the source of truth for the
-server layout and deploy/rollback procedure.
+(so the apps don't start if migrations fail). Deployment runs from the **Deploy to on-prem** GitHub
+Actions workflow ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) on a **self-hosted
+runner installed on the box** (the target is on a private LAN): it publishes, replaces each
+`"InSecrets"` marker in the published `appsettings.json` with the matching **GitHub Actions Secret**
+(config-key path joined with `__`) via
+[.github/scripts/replace-secrets.py](.github/scripts/replace-secrets.py), packages the tarballs, and
+calls `deploy.sh` locally. `deploy.sh` ships the tokenized `appsettings.json` (chmod 600) — there is
+no `appsettings.Production.json`. Deploy artifacts (unit files + `deploy.sh`) are versioned in
+[deploy/](deploy/README.md), the source of truth for the server layout, secret names, and
+deploy/rollback procedure.

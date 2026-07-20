@@ -1,0 +1,59 @@
+name: Deploy to on-prem
+
+# Manual, on-demand deploy. Runs on a self-hosted runner installed on the on-prem
+# ARM64 box, so the deploy is entirely local (no scp/ssh, no inbound network path).
+# The runner builds, replaces the "InSecrets" markers with real values pulled from
+# GitHub Actions Secrets, packages the tarballs, and hands off to ~/deploy.sh.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, ARM64]
+    env:
+      # GitHub secret names must match the "__"-joined config-key paths that carry an
+      # "InSecrets" marker in each appsettings.json. Add these under
+      # Settings -> Secrets and variables -> Actions.
+      ConnectionStrings__sensorsdb: ${{ secrets.ConnectionStrings__sensorsdb }}
+      ConnectionStrings__seq: ${{ secrets.ConnectionStrings__seq }}
+      ConnectionStrings__mailpit: ${{ secrets.ConnectionStrings__mailpit }}
+      SeqApiKey: ${{ secrets.SeqApiKey }}
+      Email__SmtpUsername: ${{ secrets.Email__SmtpUsername }}
+      Email__SmtpPassword: ${{ secrets.Email__SmtpPassword }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish (self-contained linux-arm64)
+        run: |
+          set -euo pipefail
+          rm -rf out
+          for proj in HomeMonitoring.MigrationService HomeMonitoring.SensorAgent HomeMonitoring.Web; do
+            dotnet publish "$proj/$proj.csproj" -c Release -r linux-arm64 --self-contained true \
+              -p:ErrorOnDuplicatePublishOutputFiles=false -o "out/$proj"
+          done
+
+      - name: Inject secrets (replace InSecrets markers)
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/replace-secrets.py \
+            out/HomeMonitoring.MigrationService/appsettings.json \
+            out/HomeMonitoring.SensorAgent/appsettings.json \
+            out/HomeMonitoring.Web/appsettings.json
+
+      - name: Package (now including the tokenized appsettings.json)
+        run: |
+          set -euo pipefail
+          tar czf migration.tar.gz -C out/HomeMonitoring.MigrationService .
+          tar czf agent.tar.gz     -C out/HomeMonitoring.SensorAgent .
+          tar czf web.tar.gz       -C out/HomeMonitoring.Web .
+
+      - name: Stage and deploy (local, runner is on the target box)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hm-deploy
+          cp migration.tar.gz agent.tar.gz web.tar.gz /tmp/hm-deploy/
+          "$HOME/deploy.sh"

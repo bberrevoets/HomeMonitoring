@@ -9,17 +9,21 @@
 #   agent.tar.gz     -> ~/AgentLinux      (HomeMonitoringSensorAgent.service)
 #   web.tar.gz       -> ~/WebLinux        (HomeMonitoringDashboard.service)
 #
-# Typical use, from the DEV machine:
+# Normal path: the "Deploy to on-prem" GitHub Actions workflow runs on a self-hosted
+# runner on this box — it publishes, replaces the "InSecrets" markers in each
+# appsettings.json with real values from GitHub Secrets, stages the tarballs, and calls
+# this script. To deploy by hand instead, publish + inject secrets yourself, then:
 #   proj=HomeMonitoring.SensorAgent          # or .Web / .MigrationService
 #   dotnet publish $proj/$proj.csproj -c Release -r linux-arm64 --self-contained true \
 #       -p:ErrorOnDuplicatePublishOutputFiles=false -o out
-#   tar czf agent.tar.gz --exclude='appsettings*.json' -C out .
+#   tar czf agent.tar.gz -C out .            # appsettings.json IS shipped (already tokenized)
 #   scp agent.tar.gz server:/tmp/hm-deploy/
 #   ssh server './deploy.sh'
 #
 # IMPORTANT: when a release adds an EF migration, always stage migration.tar.gz
 # too — the pending migration only applies if ~/MigrationLinux is updated.
-# appsettings*.json in each target dir is never overwritten (secrets/host config).
+# Each target's appsettings.json is overwritten by the deployed (tokenized) copy and
+# chmod'd 600, since it now carries the real secrets.
 #
 set -uo pipefail
 
@@ -44,7 +48,8 @@ sync_app() { # <tarball> <target-dir> <host-exe>
   rm -rf "$dir.bak"
   cp -a "$dir" "$dir.bak" || die "backup of $dir failed"
   chmod -R u+w "$dir.bak"
-  rsync -a --delete --exclude 'appsettings*.json' "$tmp/" "$dir/" || die "rsync into $dir failed"
+  rsync -a --delete "$tmp/" "$dir/" || die "rsync into $dir failed"
+  chmod 600 "$dir/appsettings.json" 2>/dev/null || true
   chmod +x "$dir/$exe" 2>/dev/null || true
   chmod +x "$dir/createdump" 2>/dev/null || true
   rm -rf "$tmp"
@@ -75,6 +80,10 @@ fi
 
 say "Starting application services"
 sudo systemctl start "$AGENT_SVC" "$WEB_SVC"
+
+# The staged tarballs contain the tokenized appsettings.json (real secrets) — remove them.
+say "Cleaning staging"
+rm -f "$STAGING"/*.tar.gz
 
 say "Status"
 for svc in "$MIG_SVC" "$AGENT_SVC" "$WEB_SVC"; do

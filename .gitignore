@@ -362,9 +362,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/HomeMonitoring.SensorAgent/appsettings.Production.json
+# Secrets stay out of the repo: real values live in User Secrets (dev) and GitHub
+# Secrets (which the deploy tokenizes into appsettings.json on the server). The scheme
+# uses a single appsettings.json per app, so these env-specific overrides are never
+# committed — ignoring them defensively keeps a stray secret-bearing file out of git.
+appsettings.Development.json
+appsettings.Production.json
 /migrations-idempotent.sql
-/HomeMonitoring.Web/appsettings.Production.json
 
 # Claude Code local agent state
 .claude/
