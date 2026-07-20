@@ -59,10 +59,11 @@ try
 
     // Dedicated client for the Details page's live HomeWizard fetch. AddServiceDefaults adds the
     // standard resilience handler to every client; for LAN device polling that means retries + Warning
-    // spam on an (expected) offline device. Strip it so an unreachable device fails fast and the page
-    // shows its "unreachable" state immediately. Mirrors the SensorAgent registration.
+    // spam on an (expected) offline device. Strip it so an unreachable device fails fast. ConnectionClose
+    // matches the SensorAgent: HomeWizard devices allow very few simultaneous connections, so we must not
+    // hold a keep-alive connection open (it would monopolize the device's single slot).
 #pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
-    builder.Services.AddHttpClient(HomeWizardService.HttpClientName)
+    builder.Services.AddHttpClient(HomeWizardService.HttpClientName, c => c.DefaultRequestHeaders.ConnectionClose = true)
         .RemoveAllResilienceHandlers();
     // The dashboard polls the Hue bridge every 2s; strip resilience so Polly doesn't log a
     // per-attempt telemetry line for every local call.

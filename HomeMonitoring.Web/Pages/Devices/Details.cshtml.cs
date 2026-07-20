@@ -71,23 +71,36 @@ public class DetailsModel : PageModel
         var ct = HttpContext.RequestAborted;
 
         // Two independent calls: /api gives firmware/serial/product, /api/v1/data gives WiFi + live power.
-        // Either can fail independently when the device is offline; show whatever we can reach.
-        try
+        // Either can fail independently when the device is offline; show whatever we can reach. HomeWizard
+        // devices accept very few simultaneous connections, so this on-demand fetch can briefly collide
+        // with the SensorAgent's poll and get refused — retry a few times before giving up.
+        DeviceInfo = await TryFetchAsync(() => _homeWizard.GetDeviceInfoAsync(ipAddress, ct), "device-info", ipAddress, ct);
+        EnergyData = await TryFetchAsync(() => _homeWizard.GetEnergyDataAsync(ipAddress, ct), "energy-data", ipAddress, ct);
+    }
+
+    private async Task<T?> TryFetchAsync<T>(Func<Task<T>> fetch, string what, string ipAddress, CancellationToken ct)
+        where T : class
+    {
+        const int attempts = 3;
+        for (var attempt = 1; attempt <= attempts; attempt++)
         {
-            DeviceInfo = await _homeWizard.GetDeviceInfoAsync(ipAddress, ct);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
-            _logger.LogDebug(ex, "Device {IpAddress} unreachable for device-info fetch", ipAddress);
+            try
+            {
+                return await fetch();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                if (attempt == attempts || ct.IsCancellationRequested)
+                {
+                    _logger.LogDebug(ex, "Device {IpAddress} unreachable for {What} fetch (after {Attempts} attempts)",
+                        ipAddress, what, attempt);
+                    return null;
+                }
+
+                await Task.Delay(300, ct);
+            }
         }
 
-        try
-        {
-            EnergyData = await _homeWizard.GetEnergyDataAsync(ipAddress, ct);
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
-            _logger.LogDebug(ex, "Device {IpAddress} unreachable for energy-data fetch", ipAddress);
-        }
+        return null;
     }
 }

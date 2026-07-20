@@ -50,6 +50,11 @@ Author: *Bert Berrevoets*
 
 Author: *Bert Berrevoets*
 
+- The device **Details** page showed "unreachable" even while the device was being polled
+  successfully. HomeWizard sockets accept only a few simultaneous connections, and the SensorAgent's
+  pooled keep-alive connection monopolized the device's single slot, so every other client was
+  refused. Device HTTP clients now send `Connection: close` to free the slot between polls, and the
+  Details page retries its on-demand live fetch to ride out a rare collision with a poll.
 - Devices that were online were intermittently reported **offline**. Fixed by concurrent polling
   (above), a dedicated resilience-free `HttpClient` for device calls (no retries/circuit-breaker for
   expected-offline LAN devices), and a startup-grace window in `DeviceMonitoringService` so a restart's

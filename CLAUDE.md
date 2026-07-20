@@ -99,6 +99,9 @@ Five .NET 10 projects wired together by Aspire:
   (`PhilipsHueService.HttpClientName`) instead use dedicated named clients registered with
   `RemoveAllResilienceHandlers()` — for expected-offline LAN devices, retries/circuit-breaker only add
   Warning-level log spam and can trip and fail unrelated devices; a failed poll is a single fast attempt.
+  The HomeWizard client additionally sets `Connection: close` (`DefaultRequestHeaders.ConnectionClose`):
+  the devices accept only a few simultaneous connections, so a held-open keep-alive connection would
+  monopolize the device's single slot and make it refuse other clients (e.g. the Web Details live fetch).
 
 ## Conventions
 
