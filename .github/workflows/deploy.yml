@@ -24,6 +24,7 @@ jobs:
       SeqApiKey: ${{ secrets.SeqApiKey }}
       Email__SmtpUsername: ${{ secrets.Email__SmtpUsername }}
       Email__SmtpPassword: ${{ secrets.Email__SmtpPassword }}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
     steps:
       - uses: actions/checkout@v4
 
