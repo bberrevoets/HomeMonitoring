@@ -161,6 +161,12 @@ Supported devices:
 - **HWE-P1** (Smart Meter) - Monitor electricity and gas consumption
 - **HWE-SKT** (Energy Socket) - Monitor individual appliance consumption
 
+## Renaming a Device
+
+To change a device's friendly name, go to the **Devices** page, click **Edit** on the device's row,
+update the name, and click **Save**. Only the name is editable; the change is validated, persisted
+immediately, and is not overwritten on the next poll.
+
 ## Setting Up Philips Hue
 
 1. Navigate to the Web Dashboard
@@ -392,6 +398,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Recent Updates
 
+- **Edit Device Name**: Rename a device from the Devices page (Edit → change name → Save)
 - **Dark Mode Flicker Fix**: The stored theme is now applied by an inline `<head>` script before
   first paint, eliminating the flash of the light theme when navigating between pages
 - **Production Deployment Tooling**: `systemd` migration one-shot, ordering drop-ins, and a

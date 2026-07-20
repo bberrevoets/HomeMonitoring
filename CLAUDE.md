@@ -103,6 +103,11 @@ Five .NET 10 projects wired together by Aspire:
   When polling, the `Worker` skips any product type other than `HWE_P1` or `HWE_SKT` and disables a
   device on `NotSupportedException` — don't add new product types without updating the switch in
   [HomeWizardService](HomeMonitoring.SensorAgent/Services/HomeWizardService.cs).
+- `Device.Name` is a **user-editable** friendly name, changed from the `Devices/Edit` page
+  ([Edit.cshtml.cs](HomeMonitoring.Web/Pages/Devices/Edit.cshtml.cs)). It is set only at device
+  creation (`Create` page / `HomeWizardService` discovery); the polling `Worker` and discovery's
+  update path deliberately **never reassign `Name`** on an existing device, so a user rename survives.
+  Keep it that way — don't add polling/discovery code that overwrites `Name`.
 - Device-poll loops swallow `TaskCanceledException` / `HttpRequestException` at `Debug` level on
   purpose — those mean "device offline", which `DeviceMonitoringService` handles separately. Don't
   promote them to warnings.
