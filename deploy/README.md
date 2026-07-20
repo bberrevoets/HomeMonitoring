@@ -42,6 +42,8 @@ migrations — `deploy.sh` does this for you, and aborts without starting the ap
 ## Files here
 
 - [`deploy.sh`](deploy.sh) — server-side deploy helper (see below).
+- [`reconcile-units.sh`](reconcile-units.sh) — root helper `deploy.sh` runs each deploy to keep the
+  systemd drop-ins in sync (installed once to `/usr/local/sbin/hm-reconcile-units`).
 - [`systemd/HomeMonitoringMigration.service`](systemd/HomeMonitoringMigration.service) — the one-shot migration unit.
 - `systemd/<app>.service.d/10-wait-migration.conf` — the ordering drop-ins.
 - `systemd/HomeMonitoringDashboard.service.d/20-environment.conf` — the dashboard's Kestrel listen
@@ -71,8 +73,10 @@ sudo cp deploy/systemd/HomeMonitoringDashboard.service.d/20-environment.conf \
 sudo systemctl daemon-reload
 sudo systemctl enable HomeMonitoringMigration.service \
                       HomeMonitoringSensorAgent.service HomeMonitoringDashboard.service
-# 4. Copy deploy.sh to the host home dir:
+# 4. Copy deploy.sh to the host home dir (used only by the manual-fallback deploy):
 scp deploy/deploy.sh server:~/ && ssh server 'chmod +x ~/deploy.sh'
+# 5. Install the drop-in reconcile helper so each deploy keeps the systemd drop-ins in sync:
+sudo install -m755 deploy/reconcile-units.sh /usr/local/sbin/hm-reconcile-units
 ```
 
 ## Host-specific settings (dashboard listen address)
@@ -90,6 +94,8 @@ it from configuration, so it's part of the `InSecrets` set (see the secret table
 with the app like the other endpoints.
 
 Apply changes with `sudo systemctl daemon-reload && sudo systemctl restart HomeMonitoringDashboard`.
+Each deploy also **reconciles** this drop-in (via `hm-reconcile-units`), so an edit to it in the repo
+ships on the next deploy and a wiped drop-in self-heals — the bind is no longer a one-time manual step.
 
 > Everything else an app needs in production must live in the committed `appsettings.json` (non-secret)
 > or the `InSecrets` set (secret): a deploy replaces the on-server `appsettings.json`, so any config
@@ -136,8 +142,17 @@ One-time setup:
 
 1. Install a self-hosted runner as user `bert` with labels `linux, ARM64`
    (GitHub → Settings → Actions → Runners). Ensure `python3` and the .NET SDK are on its `PATH`.
-2. Grant the runner user **NOPASSWD sudo** limited to the `systemctl` verbs `deploy.sh` uses
-   (`stop` / `start` / `restart` of the three units).
+2. Grant the runner user **NOPASSWD sudo** for what `deploy.sh` runs — the `systemctl`
+   `stop` / `start` / `restart` of the three units, plus the reconcile helper (which does its own
+   `install` + `daemon-reload` as root). Example `/etc/sudoers.d/homemonitoring`:
+
+   ```sudoers
+   Cmnd_Alias HM_DEPLOY = /usr/bin/systemctl stop HomeMonitoringSensorAgent HomeMonitoringDashboard, \
+                          /usr/bin/systemctl start HomeMonitoringSensorAgent HomeMonitoringDashboard, \
+                          /usr/bin/systemctl restart HomeMonitoringMigration
+   bert ALL=(root) NOPASSWD: HM_DEPLOY, /usr/local/sbin/hm-reconcile-units *
+   ```
+
 3. Provide the six **Secrets** listed above. The deploy job runs in the `production` **Environment**
    (declared in the workflow), so you can add them either as repository secrets
    (Settings → Secrets and variables → Actions) or as environment secrets on the `production`

@@ -32,6 +32,10 @@ AGENT_SVC=HomeMonitoringSensorAgent
 WEB_SVC=HomeMonitoringDashboard
 MIG_SVC=HomeMonitoringMigration
 
+# Reconcile helper keeps the systemd drop-ins in sync (installed once; see deploy/README.md).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RECONCILE=/usr/local/sbin/hm-reconcile-units
+
 say()  { printf '\n\033[1;36m== %s ==\033[0m\n' "$*"; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
@@ -58,6 +62,17 @@ sync_app() { # <tarball> <target-dir> <host-exe>
 
 have migration.tar.gz || have agent.tar.gz || have web.tar.gz \
   || die "no tarballs in $STAGING (expected migration.tar.gz / agent.tar.gz / web.tar.gz)"
+
+# Keep host-setting drop-ins (most importantly the dashboard's ASPNETCORE_URLS bind) in sync on
+# every deploy, so a change ships like code and a wiped drop-in self-heals. Requires the one-time
+# helper + sudoers install (deploy/README.md); skipped when absent — e.g. the manual-fallback path
+# where deploy.sh was copied to $HOME without the systemd sources beside it.
+if [[ -x "$RECONCILE" && -d "$SCRIPT_DIR/systemd" ]]; then
+  say "Reconciling systemd drop-ins"
+  sudo "$RECONCILE" "$SCRIPT_DIR/systemd"
+else
+  echo "  hm-reconcile-units or systemd sources not present — skipping drop-in reconcile"
+fi
 
 say "Stopping application services"
 sudo systemctl stop "$AGENT_SVC" "$WEB_SVC"
