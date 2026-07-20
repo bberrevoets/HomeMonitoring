@@ -254,6 +254,22 @@
 						this.updateDeviceChart(device.deviceId, device.chartData);
 					}
 				});
+
+				// Remove cards for devices no longer in the payload (deleted or disabled) so they
+				// don't linger with stale power/chart data until a full page reload.
+				const liveIds = new Set(dashboardData.devices.map(d => String(d.deviceId)));
+				document.querySelectorAll('.device-card[data-device-id]').forEach(card => {
+					const id = card.getAttribute('data-device-id');
+					if (liveIds.has(id)) return;
+
+					const chart = this.charts.get(Number(id)) ?? this.charts.get(id);
+					if (chart) {
+						chart.destroy();
+						this.charts.delete(Number(id));
+						this.charts.delete(id);
+					}
+					(card.closest('[class*="col-"]') ?? card).remove();
+				});
 			}
 
 			updateDeviceChart(deviceId, chartData) {
