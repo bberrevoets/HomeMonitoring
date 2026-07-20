@@ -43,127 +43,158 @@ public class Worker : BackgroundService
         // instrumentation) and the DB writes (SqlClient instrumentation) nest underneath.
         using var pollActivity = ActivitySource.StartActivity("PollDevices");
 
+        List<Device> devices;
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
+
+            // Detached snapshot of the enabled devices; each is polled below in its own scope.
+            devices = await dbContext.Devices
+                .AsNoTracking()
+                .Where(d => d.IsEnabled)
+                .ToListAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            pollActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error loading devices for polling");
+            return;
+        }
+
+        pollActivity?.SetTag("devices.count", devices.Count);
+
+        if (devices.Count == 0)
+        {
+            _logger.LogDebug("No devices configured yet");
+            return;
+        }
+
+        _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
+
+        // Poll every device concurrently so a single slow or unreachable device can't delay the others
+        // (which previously starved healthy devices past the offline threshold). DbContext is not
+        // thread-safe, so each poll runs in its own DI scope with its own context. Each task swallows
+        // its own failures, so WhenAll never faults the polling loop.
+        await Task.WhenAll(devices.Select(device => PollSingleDeviceAsync(device, stoppingToken)));
+    }
+
+    private async Task PollSingleDeviceAsync(Device device, CancellationToken stoppingToken)
+    {
+        using var deviceActivity = ActivitySource.StartActivity("PollDevice");
+        deviceActivity?.SetTag("device.name", device.Name);
+        deviceActivity?.SetTag("device.ip_address", device.IpAddress);
+        deviceActivity?.SetTag("device.product_type", device.ProductType.ToString());
+
+        // Skip unsupported devices (defensive — the query already filters to enabled devices).
+        if (device.ProductType != HomeWizardProductType.HWE_P1 &&
+            device.ProductType != HomeWizardProductType.HWE_SKT)
+        {
+            _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}",
+                device.ProductType, device.Name);
+            return;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
             var homeWizardService = scope.ServiceProvider.GetRequiredService<IHomeWizardService>();
 
-            // Get all enabled devices
-            var devices = await dbContext.Devices
-                .Where(d => d.IsEnabled)
-                .ToListAsync(stoppingToken);
+            var energyData = await homeWizardService.GetEnergyDataAsync(
+                device.IpAddress,
+                device.ProductType,
+                stoppingToken);
 
-            pollActivity?.SetTag("devices.count", devices.Count);
+            var tracked = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == device.Id, stoppingToken);
+            if (tracked is null) return; // Device was deleted mid-cycle.
 
-            if (devices.Count == 0)
+            // Store the reading and mark the device as seen - it is responding.
+            dbContext.EnergyReadings.Add(new EnergyReading
             {
-                _logger.LogDebug("No devices configured yet");
-                return;
-            }
+                DeviceId = tracked.Id,
+                Timestamp = DateTime.UtcNow,
+                ActivePowerW = energyData.ActivePowerW ?? 0,
+                TotalPowerImportT1KWh = energyData.TotalPowerImportT1KWh,
+                TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
+                TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
+                TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
+                TotalGasM3 = energyData.TotalGasM3
+            });
+            tracked.LastSeenAt = DateTime.UtcNow;
 
-            _logger.LogDebug("Polling {DeviceCount} devices", devices.Count);
+            await dbContext.SaveChangesAsync(stoppingToken);
 
-            foreach (var device in devices)
-            {
-                using var deviceActivity = ActivitySource.StartActivity("PollDevice");
-                deviceActivity?.SetTag("device.name", device.Name);
-                deviceActivity?.SetTag("device.ip_address", device.IpAddress);
-                deviceActivity?.SetTag("device.product_type", device.ProductType.ToString());
+            // Record successful metrics
+            _metrics.IncrementSensorReadingsProcessed();
+            _metrics.RecordProcessingTime(stopwatch.Elapsed.TotalSeconds);
 
-                var stopwatch = Stopwatch.StartNew();
-                try
-                {
-                    // Skip unsupported devices
-                    if (device.ProductType != HomeWizardProductType.HWE_P1 &&
-                        device.ProductType != HomeWizardProductType.HWE_SKT)
-                    {
-                        _logger.LogDebug("Skipping unsupported device type {ProductType} for device {DeviceName}",
-                            device.ProductType, device.Name);
-                        continue;
-                    }
+            _logger.LogInformation(
+                "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
+                device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Host is shutting down - not a device error.
+        }
+        catch (NotSupportedException ex)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
+                device.Name, ex.Message);
 
-                    var energyData = await homeWizardService.GetEnergyDataAsync(
-                        device.IpAddress,
-                        device.ProductType,
-                        stoppingToken);
-
-                    // Store the reading
-                    var reading = new EnergyReading
-                    {
-                        DeviceId = device.Id,
-                        Timestamp = DateTime.UtcNow,
-                        ActivePowerW = energyData.ActivePowerW ?? 0,
-                        TotalPowerImportT1KWh = energyData.TotalPowerImportT1KWh,
-                        TotalPowerImportT2KWh = energyData.TotalPowerImportT2KWh,
-                        TotalPowerExportT1KWh = energyData.TotalPowerExportT1KWh,
-                        TotalPowerExportT2KWh = energyData.TotalPowerExportT2KWh,
-                        TotalGasM3 = energyData.TotalGasM3
-                    };
-
-                    dbContext.EnergyReadings.Add(reading);
-
-                    // Update last seen time - device is responding
-                    device.LastSeenAt = DateTime.UtcNow;
-
-                    await dbContext.SaveChangesAsync(stoppingToken);
-
-                    // Record successful metrics
-                    _metrics.IncrementSensorReadingsProcessed();
-                    _metrics.RecordProcessingTime(stopwatch.Elapsed.TotalSeconds);
-
-                    _logger.LogInformation(
-                        "Collected energy data from {DeviceName} ({ProductType}) at {IpAddress}: PowerUsage={PowerW}W",
-                        device.Name, device.ProductType, device.IpAddress, energyData.ActivePowerW);
-                }
-                catch (NotSupportedException ex)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
-                        device.Name, ex.Message);
-
-                    // Disable unsupported devices to avoid repeated errors
-                    device.IsEnabled = false;
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                }
-                catch (TaskCanceledException)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not responding (timeout)");
-                    // This is expected when device is offline or not responding
-                    // Don't update LastSeenAt - let the monitoring service handle alerts
-                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                catch (HttpRequestException)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not reachable");
-                    // Network errors are expected when device is offline
-                    // Don't update LastSeenAt - let the monitoring service handle alerts
-                    _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                catch (Exception ex)
-                {
-                    _metrics.IncrementDeviceErrors();
-                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    // Only log actual errors, not expected communication failures
-                    _logger.LogWarning(ex,
-                        "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
-                        device.Name, device.ProductType, device.IpAddress);
-                }
-                finally
-                {
-                    stopwatch.Stop();
-                }
-            }
+            // Disable unsupported devices to avoid repeated errors.
+            await DisableDeviceAsync(device.Id, device.Name, stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not responding (timeout)");
+            // Expected when a device is offline/not responding - DeviceMonitoringService owns alerts.
+            _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
+                device.Name, device.ProductType, device.IpAddress);
+        }
+        catch (HttpRequestException)
+        {
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not reachable");
+            // Network errors are expected when a device is offline - DeviceMonitoringService owns alerts.
+            _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
+                device.Name, device.ProductType, device.IpAddress);
         }
         catch (Exception ex)
         {
-            pollActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _logger.LogError(ex, "Error during device polling");
+            _metrics.IncrementDeviceErrors();
+            deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Only log actual errors, not expected communication failures
+            _logger.LogWarning(ex,
+                "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
+                device.Name, device.ProductType, device.IpAddress);
+        }
+        finally
+        {
+            stopwatch.Stop();
+        }
+    }
+
+    private async Task DisableDeviceAsync(int deviceId, string deviceName, CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<SensorDbContext>();
+
+            var tracked = await dbContext.Devices.FirstOrDefaultAsync(d => d.Id == deviceId, stoppingToken);
+            if (tracked is null) return;
+
+            tracked.IsEnabled = false;
+            await dbContext.SaveChangesAsync(stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to disable unsupported device {DeviceName}", deviceName);
         }
     }
 }

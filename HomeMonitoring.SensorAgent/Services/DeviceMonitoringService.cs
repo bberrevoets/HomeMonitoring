@@ -17,9 +17,16 @@ public class DeviceMonitoringService(
     private readonly EmailSettings _emailSettings = emailSettings.Value;
     private bool _isFirstCheck = true;
 
+    // After a (re)start the Worker needs a moment to poll every device once; until then a device's
+    // LastSeenAt may still hold a stale value from before the restart. Suppress offline detection
+    // during this grace window so a normal restart doesn't produce false "device offline" alerts.
+    private readonly TimeSpan _startupGrace = TimeSpan.FromMinutes(2);
+    private DateTime _startedAt;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("Device Monitoring Service starting");
+        _startedAt = DateTime.UtcNow;
 
         // Wait a bit for everything to initialize
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
@@ -47,6 +54,7 @@ public class DeviceMonitoringService(
 
             var threshold = TimeSpan.FromMinutes(_emailSettings.DeviceOfflineThresholdMinutes);
             var now = DateTime.UtcNow;
+            var withinStartupGrace = now - _startedAt < _startupGrace;
 
             logger.LogDebug("Checking status of {DeviceCount} devices with threshold {Threshold} minutes",
                 devices.Count, _emailSettings.DeviceOfflineThresholdMinutes);
@@ -54,7 +62,9 @@ public class DeviceMonitoringService(
             foreach (var device in devices)
             {
                 var timeSinceLastSeen = now - device.LastSeenAt;
-                var isCurrentlyOffline = timeSinceLastSeen > threshold;
+                // Within the startup grace window, treat everything as online so a restart's stale
+                // LastSeenAt can't fire a false alert before the Worker has re-polled the device.
+                var isCurrentlyOffline = timeSinceLastSeen > threshold && !withinStartupGrace;
 
                 // Check if this is a new device we haven't seen before
                 var isNewDevice = !_deviceStatuses.ContainsKey(device.Id);

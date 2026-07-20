@@ -12,6 +12,11 @@ namespace HomeMonitoring.SensorAgent.Services;
 
 public class HomeWizardService : IHomeWizardService
 {
+    // Named HttpClient for talking to LAN HomeWizard devices. Registered (in each host's Program.cs)
+    // without the standard resilience handler, so expected device-offline failures result in a single
+    // fast attempt instead of retries + Warning-level log spam and a shared circuit breaker.
+    public const string HttpClientName = "homewizard";
+
     private readonly SensorDbContext _dbContext;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -37,7 +42,7 @@ public class HomeWizardService : IHomeWizardService
     {
         try
         {
-            using var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient(HttpClientName);
             client.Timeout = TimeSpan.FromSeconds(5);
 
             var response = await client.GetAsync($"http://{ipAddress}/api", cancellationToken);
@@ -72,7 +77,7 @@ public class HomeWizardService : IHomeWizardService
     {
         try
         {
-            using var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient(HttpClientName);
             client.Timeout = TimeSpan.FromSeconds(5);
 
             var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);
@@ -114,7 +119,7 @@ public class HomeWizardService : IHomeWizardService
     {
         try
         {
-            using var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient(HttpClientName);
             client.Timeout = TimeSpan.FromSeconds(5);
 
             var response = await client.GetAsync($"http://{ipAddress}/api/v1/data", cancellationToken);

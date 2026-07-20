@@ -57,6 +57,15 @@ try
     // Add HttpClient for device communication
     builder.Services.AddHttpClient();
 
+    // Dedicated client for the Details page's live HomeWizard fetch. AddServiceDefaults adds the
+    // standard resilience handler to every client; for LAN device polling that means retries + Warning
+    // spam on an (expected) offline device. Strip it so an unreachable device fails fast and the page
+    // shows its "unreachable" state immediately. Mirrors the SensorAgent registration.
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
+    builder.Services.AddHttpClient(HomeWizardService.HttpClientName)
+        .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
     // Add configuration
     builder.Services.Configure<DashboardSettings>(
         builder.Configuration.GetSection(DashboardSettings.SectionName));
@@ -72,6 +81,8 @@ try
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
     builder.Services.AddScoped<IPhilipsHueService, PhilipsHueService>();
+    // Details page fetches live device info (firmware, WiFi, live power) on demand.
+    builder.Services.AddScoped<IHomeWizardService, HomeWizardService>();
     builder.Services.AddHostedService<DashboardUpdateService>();
 
     var app = builder.Build();
