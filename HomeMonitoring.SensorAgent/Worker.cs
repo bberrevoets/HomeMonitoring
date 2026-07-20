@@ -9,6 +9,9 @@ namespace HomeMonitoring.SensorAgent;
 
 public class Worker : BackgroundService
 {
+    // Named after the app so ServiceDefaults' AddSource("HomeMonitoring.*") captures these spans.
+    private static readonly ActivitySource ActivitySource = new("HomeMonitoring.SensorAgent");
+
     private readonly ILogger<Worker> _logger;
     private readonly SensorAgentMetrics _metrics;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
@@ -36,6 +39,10 @@ public class Worker : BackgroundService
 
     private async Task PollDevicesAsync(CancellationToken stoppingToken)
     {
+        // Root span for the polling cycle; per-device reads, the HTTP calls (HttpClient
+        // instrumentation) and the DB writes (SqlClient instrumentation) nest underneath.
+        using var pollActivity = ActivitySource.StartActivity("PollDevices");
+
         try
         {
             using var scope = _serviceProvider.CreateScope();
@@ -47,6 +54,8 @@ public class Worker : BackgroundService
                 .Where(d => d.IsEnabled)
                 .ToListAsync(stoppingToken);
 
+            pollActivity?.SetTag("devices.count", devices.Count);
+
             if (devices.Count == 0)
             {
                 _logger.LogDebug("No devices configured yet");
@@ -57,6 +66,11 @@ public class Worker : BackgroundService
 
             foreach (var device in devices)
             {
+                using var deviceActivity = ActivitySource.StartActivity("PollDevice");
+                deviceActivity?.SetTag("device.name", device.Name);
+                deviceActivity?.SetTag("device.ip_address", device.IpAddress);
+                deviceActivity?.SetTag("device.product_type", device.ProductType.ToString());
+
                 var stopwatch = Stopwatch.StartNew();
                 try
                 {
@@ -105,6 +119,7 @@ public class Worker : BackgroundService
                 catch (NotSupportedException ex)
                 {
                     _metrics.IncrementDeviceErrors();
+                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     _logger.LogWarning("Device {DeviceName} has unsupported product type: {Message}",
                         device.Name, ex.Message);
 
@@ -115,6 +130,7 @@ public class Worker : BackgroundService
                 catch (TaskCanceledException)
                 {
                     _metrics.IncrementDeviceErrors();
+                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not responding (timeout)");
                     // This is expected when device is offline or not responding
                     // Don't update LastSeenAt - let the monitoring service handle alerts
                     _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not responding (timeout)",
@@ -123,6 +139,7 @@ public class Worker : BackgroundService
                 catch (HttpRequestException)
                 {
                     _metrics.IncrementDeviceErrors();
+                    deviceActivity?.SetStatus(ActivityStatusCode.Error, "Device not reachable");
                     // Network errors are expected when device is offline
                     // Don't update LastSeenAt - let the monitoring service handle alerts
                     _logger.LogDebug("Device {DeviceName} ({ProductType}) at {IpAddress} is not reachable",
@@ -131,6 +148,7 @@ public class Worker : BackgroundService
                 catch (Exception ex)
                 {
                     _metrics.IncrementDeviceErrors();
+                    deviceActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                     // Only log actual errors, not expected communication failures
                     _logger.LogWarning(ex,
                         "Unexpected error collecting data from device {DeviceName} ({ProductType}) at {IpAddress}",
@@ -144,6 +162,7 @@ public class Worker : BackgroundService
         }
         catch (Exception ex)
         {
+            pollActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Error during device polling");
         }
     }
