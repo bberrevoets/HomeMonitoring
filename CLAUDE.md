@@ -36,7 +36,8 @@ dotnet ef migrations remove   -p .\HomeMonitoring.Shared\HomeMonitoring.Shared.c
 ```
 
 `MigrationService` applies migrations automatically at startup — do not call `dotnet ef database update`
-unless running services outside Aspire.
+unless running services outside Aspire. In production the same runner executes as a `systemd`
+one-shot before the apps start; see [deploy/README.md](deploy/README.md).
 
 ## Architecture
 
@@ -47,13 +48,16 @@ Five .NET 10 projects wired together by Aspire:
 - [ServiceDefaults](ServiceDefaults/Extensions.cs) — `AddServiceDefaults()` adds OpenTelemetry
   (metrics + tracing, custom meters `HomeMonitoring.SensorAgent` and `HomeMonitoring.Web`),
   service discovery, resilient HttpClient, and `/health` + `/alive` endpoints (Development only).
+  Sets the OTel resource `service.name` explicitly (falling back to the application name when
+  Aspire's `OTEL_SERVICE_NAME` is absent — e.g. running standalone against an external OTLP stack)
+  so telemetry is never reported as `unknown_service`.
 - [HomeMonitoring.Shared](HomeMonitoring.Shared/) — `SensorDbContext`, EF migrations, domain models
   (`Device`, `EnergyReading`, `HueLight`, `HueLightReading`, `HueBridgeConfiguration`), and
   HomeWizard/Hue DTOs. Referenced by Web, SensorAgent, MigrationService.
 - [HomeMonitoring.SensorAgent](HomeMonitoring.SensorAgent/) — three hosted services:
   - `Worker` — polls HomeWizard devices every 10s, writes `EnergyReading` rows, updates `Device.LastSeenAt`.
   - `DeviceMonitoringService` — sends email alerts (via Mailpit in dev) when devices exceed
-    `Monitoring:DeviceOfflineThresholdMinutes`.
+    `Email:DeviceOfflineThresholdMinutes`.
   - `HueLightMonitoringService` — polls Hue bridges, persists light state.
   - Exposes services consumed cross-project: `IHomeWizardService`, `IPhilipsHueService`, `IEmailService`,
     plus `SensorAgentMetrics` (singleton meter) and `DeviceConnectivityHealthCheck`.
@@ -72,15 +76,17 @@ Five .NET 10 projects wired together by Aspire:
   [SensorAgent Program.cs](HomeMonitoring.SensorAgent/Program.cs).
 - **Logging**: Serilog bootstrap logger → reconfigured from config, enriched with
   `Service` property (`HomeMonitoring.Web` / `HomeMonitoring.SensorAgent`), shipped to Seq and OTLP.
-  Aspire's OTLP endpoint is in `OTEL_EXPORTER_OTLP_ENDPOINT`.
+  Aspire's OTLP endpoint is in `OTEL_EXPORTER_OTLP_ENDPOINT`. The Serilog OTLP sink also sets the
+  `service.name` resource attribute (it does not read `OTEL_SERVICE_NAME` on its own).
 - **Health checks**: each service adds `sql-server` (tagged `db`,`ready`) plus service-specific checks
   (`signalr` on Web, `device-connectivity` on SensorAgent). Endpoints are Dev-only.
 
 ## Conventions
 
-- Configuration sections used in code: `DashboardSettings` (Web), `Monitoring:Email`,
-  `Monitoring:DeviceOfflineThresholdMinutes`, `Monitoring:PollingIntervalSeconds`,
-  `Monitoring:HealthCheckIntervalMinutes` (SensorAgent).
+- Configuration sections used in code: `DashboardSettings` (Web); on the SensorAgent the `Email`
+  section (bound to `EmailSettings`, **validated at startup** — `SmtpHost`/`SmtpPort` are filled
+  from the Aspire `mailpit` connection string) plus `Monitoring:PollingIntervalSeconds` and
+  `Monitoring:HealthCheckIntervalMinutes`.
 - `Device.ProductType` (enum `HomeWizardProductType`) is persisted as **string** (see `OnModelCreating`).
   When polling, the `Worker` skips any product type other than `HWE_P1` or `HWE_SKT` and disables a
   device on `NotSupportedException` — don't add new product types without updating the switch in
@@ -91,3 +97,14 @@ Five .NET 10 projects wired together by Aspire:
 - Stale build artifacts exist under `./HomeMonitoring/HomeMonitoring.AppHost` and
   `./HomeMonitoring/HomeMonitoring.ServiceDefaults` (leftover from a rename). Ignore — actual sources
   are at the repo root.
+
+## Production deployment (Linux/systemd)
+
+Production does **not** use Aspire. The three services are published **self-contained for
+`linux-arm64`** and run as `systemd` units (`HomeMonitoringMigration` one-shot →
+`HomeMonitoringSensorAgent` + `HomeMonitoringDashboard`), mirroring Aspire's migrate-then-start
+ordering via a `Before=` on the migration unit plus `After=`/`Requires=` drop-ins on the apps
+(so the apps don't start if migrations fail). Host-specific config and secrets live in each app's
+`appsettings.Production.json` **on the server** (never committed). Deploy artifacts (unit files +
+`deploy.sh`) are versioned in [deploy/](deploy/README.md), which is the source of truth for the
+server layout and deploy/rollback procedure.

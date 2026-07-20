@@ -1,0 +1,17 @@
+# Reference copy of the base unit as installed on the server.
+# The migration ordering is layered on via the .d/10-wait-migration.conf drop-in
+# (systemctl edit HomeMonitoringDashboard) so this base file stays untouched.
+[Unit]
+Description=My Monitor Dashboard Service
+After=network.target
+
+[Service]
+Type=simple
+User=bert
+WorkingDirectory=/home/bert/WebLinux
+ExecStart=/home/bert/WebLinux/HomeMonitoring.Web
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

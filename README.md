@@ -5,6 +5,7 @@ A comprehensive home energy monitoring system built with .NET Aspire that tracks
 ## Overview
 
 HomeMonitoring is a distributed application that consists of:
+
 - **Web Dashboard**: Real-time energy monitoring interface with SignalR updates and Philips Hue light control
 - **Sensor Agent**: Background service that polls HomeWizard devices, monitors device status, and manages Philips Hue lights
 - **Migration Service**: Handles database migrations automatically
@@ -58,16 +59,25 @@ dotnet user-secrets init
 
 ### 3. Configure Application Settings
 
-Update `appsettings.json` in the SensorAgent project to set your monitoring email:
+The SensorAgent binds an `Email` section (see `EmailSettings`) and **validates it at startup** —
+the service fails fast if any required value is missing. Update `appsettings.json` in the
+SensorAgent project:
 
 ```json
 {
-  "Monitoring": {
-    "Email": "your-email@example.com",
+  "Email": {
+    "FromEmail": "home-monitoring@example.com",
+    "FromName": "Home Monitoring System",
+    "SmtpUsername": "monitoring",
+    "SmtpPassword": "monitoring",
+    "MonitoringEmail": "your-email@example.com",
     "DeviceOfflineThresholdMinutes": 30
   }
 }
 ```
+
+> In Aspire (dev), `SmtpHost` / `SmtpPort` are supplied automatically from the Mailpit connection
+> string, so you only need the fields above. Mailpit accepts any SMTP credentials.
 
 ### 4. Run the Application
 
@@ -80,6 +90,7 @@ dotnet run
 ```
 
 This will:
+
 - Start SQL Server container with persistent storage
 - Run database migrations automatically
 - Start Seq for centralized logging
@@ -88,12 +99,15 @@ This will:
 - Launch the Web dashboard
 
 Access the services through the **Aspire Dashboard**:
+
 - **Aspire Dashboard**: The primary entry point that shows all running services and their dynamically assigned ports
 - **Web Dashboard**: Access via the Aspire Dashboard or the direct link shown in the console
 - **Seq Logs**: Access via the Aspire Dashboard for centralized logging
 - **Mailpit**: Access via the Aspire Dashboard for email testing
 
-> **Note**: Port numbers are dynamically assigned by .NET Aspire. Use the Aspire Dashboard to access all services with their current port assignments. The dashboard URL will be displayed in the console when you run the application.
+> **Note**: Port numbers are dynamically assigned by .NET Aspire. Use the Aspire Dashboard to access all
+> services with their current port assignments. The dashboard URL will be displayed in the console when
+> you run the application.
 
 ## Database Migrations
 
@@ -114,7 +128,9 @@ dotnet ef migrations add YourMigrationName -p .\HomeMonitoring.Shared\HomeMonito
 
 ### Applying Migrations Manually
 
-The Migration Service automatically applies migrations when the solution starts. However, you can apply them manually:
+The Migration Service automatically applies migrations when the solution starts (under Aspire),
+and in production it runs as a `systemd` one-shot before the apps start — see
+[deploy/README.md](deploy/README.md). You can also apply them manually:
 
 ```bash
 # Using the Web project as startup
@@ -141,6 +157,7 @@ dotnet ef migrations remove -p .\HomeMonitoring.Shared\HomeMonitoring.Shared.csp
 5. The system will automatically detect the device type and start monitoring
 
 Supported devices:
+
 - **HWE-P1** (Smart Meter) - Monitor electricity and gas consumption
 - **HWE-SKT** (Energy Socket) - Monitor individual appliance consumption
 
@@ -156,6 +173,7 @@ Supported devices:
 5. Once connected, all lights will be automatically discovered and available for control
 
 Features:
+
 - **Real-time Control**: Toggle lights on/off and adjust brightness
 - **Live Updates**: See changes from other sources (physical switches, other apps) in real-time
 - **Smart Notifications**: Only get notified for changes made by others, not your own actions
@@ -167,9 +185,15 @@ Features:
 
 ```json
 {
+  "Email": {
+    "FromEmail": "home-monitoring@example.com",
+    "FromName": "Home Monitoring System",
+    "SmtpUsername": "monitoring",
+    "SmtpPassword": "monitoring",
+    "MonitoringEmail": "admin@example.com",
+    "DeviceOfflineThresholdMinutes": 30
+  },
   "Monitoring": {
-    "Email": "admin@example.com",
-    "DeviceOfflineThresholdMinutes": 30,
     "PollingIntervalSeconds": 5,
     "HealthCheckIntervalMinutes": 5
   }
@@ -201,28 +225,32 @@ Features:
 You can run individual components separately for development:
 
 1. **Start SQL Server** (using LocalDB or Docker):
-```bash
+
+   ```bash
    # Using Docker
    docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrongPassword123!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
-```
+   ```
 
 2. **Update connection strings** in `appsettings.json`:
-```json
+
+   ```json
    {
      "ConnectionStrings": {
        "DefaultConnection": "Server=localhost;Database=HomeMonitoring;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=true"
      }
    }
-```
+   ```
 
 3. **Run migrations**:
-```bash
+
+   ```bash
    cd HomeMonitoring.MigrationService
    dotnet run
-```
+   ```
 
 4. **Start services**:
-```bash
+
+   ```bash
    # Terminal 1: Web Dashboard
    cd HomeMonitoring.Web
    dotnet run
@@ -230,7 +258,7 @@ You can run individual components separately for development:
    # Terminal 2: Sensor Agent
    cd HomeMonitoring.SensorAgent
    dotnet run
-```
+   ```
 
 ### Installing EF Core Tools
 
@@ -246,6 +274,25 @@ Update the tools:
 dotnet tool update --global dotnet-ef
 ```
 
+## Production Deployment
+
+In production the app does **not** run under Aspire. The three .NET services are published
+**self-contained for `linux-arm64`** and run as `systemd` units on a Linux host, with database
+migrations applied by a one-shot unit before the apps start (the same ordering Aspire enforces
+with `WaitForCompletion`).
+
+Host layout, unit files, first-time setup, and rollback are documented in
+[deploy/README.md](deploy/README.md). A typical release, after publishing and uploading the
+self-contained tarballs to the server's staging dir, is a single command:
+
+```bash
+ssh server './deploy.sh'
+```
+
+`deploy.sh` stops the apps, syncs the new binaries (preserving each host's `appsettings*.json`
+and keeping a rollback snapshot), restarts the migration one-shot to apply any pending
+migrations, then starts the apps again.
+
 ## Troubleshooting
 
 ### Migration Issues
@@ -254,11 +301,12 @@ If you encounter migration errors:
 
 1. **Delete existing migrations**:
    - Remove the `Migrations` folder from `HomeMonitoring.Shared`
-   
+
 2. **Create fresh initial migration**:
-```bash
+
+   ```bash
    dotnet ef migrations add InitialCreate -p .\HomeMonitoring.Shared\HomeMonitoring.Shared.csproj -s .\HomeMonitoring.Web\HomeMonitoring.Web.csproj
-```
+   ```
 
 3. **Check connection string**: Ensure the connection string in your configuration matches your SQL Server instance
 
@@ -278,7 +326,7 @@ If you encounter migration errors:
 
 ### Email Notifications
 
-- Check Mailpit UI at http://localhost:8025 to see sent emails
+- Check the Mailpit UI at <http://localhost:8025> to see sent emails
 - Verify the monitoring email address is configured correctly
 - Check the device offline threshold settings
 
@@ -290,7 +338,7 @@ If you encounter migration errors:
 
 ## Architecture
 
-```
+```text
 HomeMonitoring/
 ├── AppHost/                    # .NET Aspire orchestrator
 ├── HomeMonitoring.Web/         # Razor Pages web dashboard
@@ -343,6 +391,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Changelog
 
 ### Recent Updates
+
+- **Production Deployment Tooling**: `systemd` migration one-shot, ordering drop-ins, and a
+  `deploy.sh` helper (see [`deploy/`](deploy/README.md))
+- **Telemetry Fix**: Explicit OpenTelemetry `service.name` so traces/logs are no longer reported
+  as `unknown_service`
+- **Validated Email Settings**: The `Email` configuration section is now required and validated at
+  startup
 - **Philips Hue Integration**: Added complete light control and monitoring
 - **Toast Notifications**: Replaced alert divs with professional toast system
 - **Theme Support**: Added dark/light theme switching

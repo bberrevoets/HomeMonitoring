@@ -29,6 +29,12 @@ try
         .WriteTo.OpenTelemetry(options =>
         {
             options.Endpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+            // The Serilog OTLP sink doesn't read OTEL_SERVICE_NAME on its own; set service.name
+            // explicitly so logs aren't tagged "unknown_service" in Grafana/Loki.
+            options.ResourceAttributes = new Dictionary<string, object>
+            {
+                ["service.name"] = builder.Configuration["OTEL_SERVICE_NAME"] ?? "HomeMonitoring.Web"
+            };
             options.IncludedData = IncludedData.TraceIdField |
                                    IncludedData.SpanIdField;
         })
