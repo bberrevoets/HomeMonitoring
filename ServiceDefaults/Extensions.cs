@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace ServiceDefaults;
@@ -57,6 +58,14 @@ public static class Extensions
         });
 
         builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource =>
+            {
+                // service.name otherwise falls back to "unknown_service:<process>". Aspire's AppHost
+                // injects OTEL_SERVICE_NAME per resource; when running standalone (e.g. exporting
+                // straight to an external OTLP/Grafana stack) it doesn't, so provide a sensible default.
+                if (string.IsNullOrWhiteSpace(builder.Configuration["OTEL_SERVICE_NAME"]))
+                    resource.AddService(builder.Environment.ApplicationName);
+            })
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
