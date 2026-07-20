@@ -37,7 +37,13 @@ sync_app() { # <tarball> <target-dir> <host-exe>
   local tarball="$STAGING/$1" dir="$2" exe="$3" tmp
   tmp="$(mktemp -d)" || die "mktemp failed"
   tar xzf "$tarball" -C "$tmp" || die "extract $tarball failed"
-  rm -rf "$dir.bak"; cp -a "$dir" "$dir.bak" || die "backup of $dir failed"
+  # Refresh the rollback snapshot. cp -a preserves the source's (often read-only,
+  # dr-x------) directory mode, so make the snapshot writable — otherwise neither the
+  # next deploy's cleanup nor a manual `rm -rf` can unlink files inside it.
+  [[ -e "$dir.bak" ]] && chmod -R u+w "$dir.bak"
+  rm -rf "$dir.bak"
+  cp -a "$dir" "$dir.bak" || die "backup of $dir failed"
+  chmod -R u+w "$dir.bak"
   rsync -a --delete --exclude 'appsettings*.json' "$tmp/" "$dir/" || die "rsync into $dir failed"
   chmod +x "$dir/$exe" 2>/dev/null || true
   chmod +x "$dir/createdump" 2>/dev/null || true
