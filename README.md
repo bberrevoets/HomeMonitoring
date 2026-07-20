@@ -14,6 +14,7 @@ HomeMonitoring is a distributed application that consists of:
 ## Features
 
 - **Energy Monitoring**: Real-time tracking of HomeWizard devices (P1 Smart Meters, Energy Sockets)
+- **Device Management**: Add, view full details for, rename, and delete devices from the dashboard
 - **Philips Hue Integration**: Control and monitor Philips Hue lights with real-time updates
 - **Device Status Monitoring**: Automatic email alerts when devices go offline
 - **Real-time Updates**: SignalR-powered live updates for energy data and light status
@@ -166,6 +167,20 @@ Supported devices:
 To change a device's friendly name, go to the **Devices** page, click **Edit** on the device's row,
 update the name, and click **Save**. Only the name is editable; the change is validated, persisted
 immediately, and is not overwritten on the next poll.
+
+## Viewing Device Details
+
+Click **Details** on a device's row to see everything the system knows about it: stored fields (type,
+IP, serial, discovered/last-seen, status), live information fetched from the device itself (firmware,
+API version, product name, WiFi network and signal strength, meter model, live power), and statistics
+over its collected readings. If the device is unreachable, the stored information is still shown along
+with an "unreachable" note and a **Refresh** button.
+
+## Deleting a Device
+
+Click **Delete** on a device's row. A confirmation dialog warns that **all collected data for the
+device (its energy readings) will be permanently deleted and cannot be recovered**. Confirming removes
+the device and cascades the deletion of its readings.
 
 ## Setting Up Philips Hue
 
@@ -398,6 +413,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Recent Updates
 
+- **Device Details & Delete**: View full device info (firmware, WiFi signal, live power, collected-data
+  stats) and delete a device with a confirmation dialog, both from the Devices page
+- **More reliable polling**: HomeWizard devices are polled in parallel and no longer briefly false-flag
+  as offline after an app restart
 - **Edit Device Name**: Rename a device from the Devices page (Edit → change name → Save)
 - **Dark Mode Flicker Fix**: The stored theme is now applied by an inline `<head>` script before
   first paint, eliminating the flash of the light theme when navigating between pages
