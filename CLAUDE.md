@@ -121,7 +121,9 @@ no `appsettings.Production.json`. Because the deploy **overwrites** `appsettings
 address (Kestrel binds `localhost` only without it, and it can't be dev-safely committed) lives in a
 systemd drop-in
 ([HomeMonitoringDashboard.service.d/20-environment.conf](deploy/systemd/HomeMonitoringDashboard.service.d/20-environment.conf)),
-**not** in `appsettings.json` — and `deploy.sh` reconciles that drop-in each deploy (via the
-`hm-reconcile-units` root helper) so it ships like code instead of being a one-time manual step. Deploy artifacts (unit files + `deploy.sh`) are versioned in
+**not** in `appsettings.json` — and `deploy.sh` re-creates that drop-in if it goes missing (via the
+`hm-reconcile-units` root helper, which synthesizes fixed content and never overwrites a present
+drop-in), then verifies at runtime that Kestrel bound `0.0.0.0:5000` and fails the deploy if not.
+Deploy artifacts (unit files + `deploy.sh`) are versioned in
 [deploy/](deploy/README.md), the source of truth for the server layout, secret names, and
 deploy/rollback procedure.

@@ -32,9 +32,10 @@ AGENT_SVC=HomeMonitoringSensorAgent
 WEB_SVC=HomeMonitoringDashboard
 MIG_SVC=HomeMonitoringMigration
 
-# Reconcile helper keeps the systemd drop-ins in sync (installed once; see deploy/README.md).
+# Reconcile helper ensures the systemd drop-ins exist (installed once; see deploy/README.md).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RECONCILE=/usr/local/sbin/hm-reconcile-units
+DASHBOARD_LISTEN='0.0.0.0:5000'   # expected Kestrel bind from the ASPNETCORE_URLS drop-in
 
 say()  { printf '\n\033[1;36m== %s ==\033[0m\n' "$*"; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
@@ -63,15 +64,17 @@ sync_app() { # <tarball> <target-dir> <host-exe>
 have migration.tar.gz || have agent.tar.gz || have web.tar.gz \
   || die "no tarballs in $STAGING (expected migration.tar.gz / agent.tar.gz / web.tar.gz)"
 
-# Keep host-setting drop-ins (most importantly the dashboard's ASPNETCORE_URLS bind) in sync on
-# every deploy, so a change ships like code and a wiped drop-in self-heals. Requires the one-time
-# helper + sudoers install (deploy/README.md); skipped when absent — e.g. the manual-fallback path
-# where deploy.sh was copied to $HOME without the systemd sources beside it.
-if [[ -x "$RECONCILE" && -d "$SCRIPT_DIR/systemd" ]]; then
-  say "Reconciling systemd drop-ins"
-  sudo "$RECONCILE" "$SCRIPT_DIR/systemd"
+# Ensure the host-setting drop-ins exist (the dashboard's ASPNETCORE_URLS bind), self-healing a
+# wiped/missing one. hm-reconcile-units synthesizes the content itself, creates it only when absent
+# (it never overwrites a present drop-in, so a manual change is preserved), and ignores its argument
+# (passed only so the `*` sudoers pattern keeps matching). Aborts the deploy if the helper fails.
+# A present-but-wrong drop-in is caught later by the runtime bind check. Requires the one-time helper
+# + sudoers install (deploy/README.md); skipped when the helper is not installed.
+if [[ -x "$RECONCILE" ]]; then
+  say "Ensuring systemd drop-ins"
+  sudo "$RECONCILE" "$SCRIPT_DIR/systemd" || die "systemd drop-in reconcile failed"
 else
-  echo "  hm-reconcile-units or systemd sources not present — skipping drop-in reconcile"
+  echo "  hm-reconcile-units not installed — skipping systemd drop-in check"
 fi
 
 say "Stopping application services"
@@ -99,6 +102,20 @@ sudo systemctl start "$AGENT_SVC" "$WEB_SVC"
 # The staged tarballs contain the tokenized appsettings.json (real secrets) — remove them.
 say "Cleaning staging"
 rm -f "$STAGING"/*.tar.gz
+
+# Fail loudly if the dashboard did not come up on the expected LAN-reachable bind. Catches a missing
+# or wrong ASPNETCORE_URLS drop-in (Kestrel falling back to localhost) instead of reporting a green
+# deploy while the site is unreachable from the LAN.
+say "Verifying dashboard bind ($DASHBOARD_LISTEN)"
+bound=0
+for _ in $(seq 1 15); do
+  if ss -tln 2>/dev/null | awk '{print $4}' | grep -qFx "$DASHBOARD_LISTEN"; then bound=1; break; fi
+  sleep 1
+done
+[[ "$bound" == 1 ]] || die "$WEB_SVC is not listening on $DASHBOARD_LISTEN after start —
+  the ASPNETCORE_URLS bind is missing or wrong (Kestrel may be bound to localhost only).
+  Inspect: ss -tlnp | grep :5000  and  ${WEB_SVC}.service.d/20-environment.conf"
+echo "  dashboard is listening on $DASHBOARD_LISTEN"
 
 say "Status"
 for svc in "$MIG_SVC" "$AGENT_SVC" "$WEB_SVC"; do
