@@ -30,6 +30,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+        env:
+          # On this self-hosted runner the default install dir /usr/share/dotnet is not
+          # writable by the runner user, so install into the runner's tool cache
+          # (writable and persisted across runs, so the SDK isn't re-downloaded each time).
+          DOTNET_INSTALL_DIR: ${{ runner.tool_cache }}/dotnet
 
       - name: Publish (self-contained linux-arm64)
         run: |
