@@ -10,6 +10,10 @@ on:
 jobs:
   deploy:
     runs-on: [self-hosted, Linux, ARM64]
+    # Bind to the `production` environment so environment-scoped secrets and a
+    # required-reviewer approval gate (if configured on it) apply to this job.
+    # Repo-level secrets still resolve for environment jobs, so this is non-breaking.
+    environment: production
     env:
       # GitHub secret names must match the "__"-joined config-key paths that carry an
       # "InSecrets" marker in each appsettings.json. Add these under

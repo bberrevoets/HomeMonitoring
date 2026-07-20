@@ -111,9 +111,11 @@ One-time setup:
    (GitHub → Settings → Actions → Runners). Ensure `python3` and the .NET SDK are on its `PATH`.
 2. Grant the runner user **NOPASSWD sudo** limited to the `systemctl` verbs `deploy.sh` uses
    (`stop` / `start` / `restart` of the three units).
-3. Add the six repository **Secrets** listed above (Settings → Secrets and variables → Actions).
-   Optionally place them in a `production` **Environment** with a required reviewer to gate each
-   deploy behind a manual approval.
+3. Provide the six **Secrets** listed above. The deploy job runs in the `production` **Environment**
+   (declared in the workflow), so you can add them either as repository secrets
+   (Settings → Secrets and variables → Actions) or as environment secrets on the `production`
+   environment — the job resolves both. Add a **required reviewer** to that environment to gate each
+   deploy behind a manual approval (recommended).
 
 Trigger a deploy from the **Actions** tab (or `gh workflow run "Deploy to on-prem"`).
 
