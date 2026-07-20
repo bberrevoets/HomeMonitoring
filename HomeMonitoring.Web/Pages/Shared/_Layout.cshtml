@@ -4,6 +4,18 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>@ViewData["Title"] - HomeMonitoring</title>
+    <script>
+        // Apply the stored theme synchronously before first paint to avoid a
+        // flash of the light theme on every navigation (FOUC). Mirrors the
+        // storage key and default used by theme-toggle.js.
+        (function () {
+            try {
+                document.documentElement.setAttribute(
+                    "data-bs-theme",
+                    localStorage.getItem("theme") || "light");
+            } catch (e) { /* localStorage unavailable — fall back to Bootstrap default */ }
+        })();
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>

@@ -68,6 +68,12 @@ Five .NET 10 projects wired together by Aspire:
     about their own actions).
   - Note: Web references `HomeMonitoring.SensorAgent` to reuse `IPhilipsHueService` — the Web project
     instantiates the same Hue service classes directly, it does **not** call SensorAgent over HTTP.
+  - **Theming**: dark/light mode uses Bootstrap 5.3's `data-bs-theme` attribute on `<html>`, persisted
+    in `localStorage` (key `theme`). The stored theme is applied by an **inline, render-blocking script
+    in the `_Layout.cshtml` `<head>`** so `data-bs-theme` exists before first paint — this prevents a
+    flash-of-light-theme (FOUC) on every full-page navigation. `wwwroot/js/theme-toggle.js` (loaded at
+    the end of `<body>`) only owns the toggle button and icon/label syncing. **Keep the head snippet** —
+    moving theme initialization back to `DOMContentLoaded` reintroduces the flash.
 
 ### Cross-cutting
 

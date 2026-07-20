@@ -37,6 +37,9 @@ Author: *Bert Berrevoets*
 
 Author: *Bert Berrevoets*
 
+- Dark mode no longer flashes the light theme on every page navigation (FOUC). The stored theme is
+  now applied by an inline, render-blocking script in the layout `<head>` before first paint,
+  instead of by `theme-toggle.js` at the end of `<body>` on `DOMContentLoaded`.
 - `PhilipsHueLightMonitorService` now handles cancellation cleanly instead of logging on shutdown.
 - Dropped `HealthChecks.UI` to unblock EF Core 10 startup.
 - OpenTelemetry `service.name` is now set explicitly on the resource (and on the Serilog OTLP

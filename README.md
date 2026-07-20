@@ -392,6 +392,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### Recent Updates
 
+- **Dark Mode Flicker Fix**: The stored theme is now applied by an inline `<head>` script before
+  first paint, eliminating the flash of the light theme when navigating between pages
 - **Production Deployment Tooling**: `systemd` migration one-shot, ordering drop-ins, and a
   `deploy.sh` helper (see [`deploy/`](deploy/README.md))
 - **Telemetry Fix**: Explicit OpenTelemetry `service.name` so traces/logs are no longer reported
