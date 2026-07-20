@@ -1,40 +1,50 @@
 #!/usr/bin/env bash
 #
-# Reconcile the systemd drop-ins that carry host settings a deploy must keep in sync — most
-# importantly the dashboard's ASPNETCORE_URLS bind. `deploy.sh` calls this every deploy so a
-# drop-in change ships like code and a wiped drop-in self-heals, instead of relying on the
-# one-time first-time-setup step (which a plain redeploy would otherwise miss).
+# Reconcile the systemd drop-ins that carry host settings a deploy must keep in sync — currently
+# the dashboard's ASPNETCORE_URLS bind. deploy.sh runs this each deploy so the bind ships like code
+# and a wiped drop-in self-heals, instead of relying only on the one-time first-time-setup step.
 #
-# It runs as root via a single, exact NOPASSWD sudoers entry:
-#     bert ALL=(root) NOPASSWD: /usr/local/sbin/hm-reconcile-units *
-# Install once with:  sudo install -m755 deploy/reconcile-units.sh /usr/local/sbin/hm-reconcile-units
+# SECURITY: the content is SYNTHESIZED below, never copied from a caller-supplied path. This helper
+# runs as root via NOPASSWD sudo; copying an arbitrary source would let a compromised runner install
+# malicious unit directives (e.g. User=root / ExecStart=...) or symlink root-only files into a
+# world-readable drop-in. Command-line arguments are therefore IGNORED (one is still accepted so the
+# `hm-reconcile-units *` sudoers pattern keeps matching).
 #
-# The managed set is a hardcoded list (never a wildcard), so this can only ever write the
-# specific drop-ins below — it can't be coaxed into installing an arbitrary systemd unit.
+# The DASHBOARD_ENV heredoc below must stay byte-identical to
+# deploy/systemd/HomeMonitoringDashboard.service.d/20-environment.conf (the reference / first-cp copy).
 #
-# Usage: hm-reconcile-units <systemd-source-dir>   # the repo's deploy/systemd directory
+# Install once:  sudo install -m755 deploy/reconcile-units.sh /usr/local/sbin/hm-reconcile-units
 set -uo pipefail
 
-SRC="${1:?usage: hm-reconcile-units <systemd-source-dir>}"
 DEST=/etc/systemd/system
+CHANGED=0
 
-MANAGED=(
-  "HomeMonitoringDashboard.service.d/20-environment.conf"
+DASHBOARD_ENV=$(cat <<'EOF'
+[Service]
+# HTTP listen address for the dashboard. This is a host/deployment concern, so it lives in the
+# unit (as a drop-in) rather than appsettings.json: a deploy of the base appsettings.json can
+# never wipe it, and it never affects Aspire dev (systemd isn't used there). 0.0.0.0 = listen on
+# all interfaces (LAN-reachable); use 127.0.0.1 to expose the app only through a local proxy.
+Environment=ASPNETCORE_URLS=http://0.0.0.0:5000
+EOF
 )
 
-changed=0
-for rel in "${MANAGED[@]}"; do
-  src="$SRC/$rel" dst="$DEST/$rel"
-  [[ -f "$src" ]] || { echo "  reconcile: source $rel missing, skipping"; continue; }
-  if ! cmp -s "$src" "$dst" 2>/dev/null; then
-    install -D -m644 "$src" "$dst" || { echo "reconcile: install $dst failed" >&2; exit 1; }
-    echo "  reconciled $dst"
-    changed=1
+reconcile() { # <relative-path-under-DEST> <desired-content>
+  local dst="$DEST/$1" desired="$2"
+  if [[ -f "$dst" && "$(cat -- "$dst" 2>/dev/null)" == "$desired" ]]; then
+    return 0
   fi
-done
+  mkdir -p -- "$(dirname -- "$dst")" || { echo "reconcile: mkdir for $dst failed" >&2; exit 1; }
+  printf '%s\n' "$desired" > "$dst" || { echo "reconcile: write $dst failed" >&2; exit 1; }
+  chmod 644 -- "$dst" || { echo "reconcile: chmod $dst failed" >&2; exit 1; }
+  echo "  reconciled $dst"
+  CHANGED=1
+}
 
-if [[ "$changed" == 1 ]]; then
-  systemctl daemon-reload
+reconcile "HomeMonitoringDashboard.service.d/20-environment.conf" "$DASHBOARD_ENV"
+
+if [[ "$CHANGED" == 1 ]]; then
+  systemctl daemon-reload || { echo "reconcile: daemon-reload failed" >&2; exit 1; }
   echo "  systemd daemon reloaded"
 else
   echo "  systemd drop-ins already up to date"

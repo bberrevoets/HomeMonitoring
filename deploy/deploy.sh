@@ -63,15 +63,17 @@ sync_app() { # <tarball> <target-dir> <host-exe>
 have migration.tar.gz || have agent.tar.gz || have web.tar.gz \
   || die "no tarballs in $STAGING (expected migration.tar.gz / agent.tar.gz / web.tar.gz)"
 
-# Keep host-setting drop-ins (most importantly the dashboard's ASPNETCORE_URLS bind) in sync on
-# every deploy, so a change ships like code and a wiped drop-in self-heals. Requires the one-time
-# helper + sudoers install (deploy/README.md); skipped when absent — e.g. the manual-fallback path
-# where deploy.sh was copied to $HOME without the systemd sources beside it.
-if [[ -x "$RECONCILE" && -d "$SCRIPT_DIR/systemd" ]]; then
+# Keep host-setting drop-ins (the dashboard's ASPNETCORE_URLS bind) in sync on every deploy, so the
+# bind ships like code and a wiped drop-in self-heals. hm-reconcile-units synthesizes the content
+# itself and ignores its argument (passed only so the `*` sudoers pattern keeps matching, and so a
+# pre-fix helper still reads the trusted checkout). Aborts the deploy if the reconcile fails, rather
+# than starting the apps against a stale/absent drop-in. Requires the one-time helper + sudoers
+# install (deploy/README.md); skipped when the helper is not installed.
+if [[ -x "$RECONCILE" ]]; then
   say "Reconciling systemd drop-ins"
-  sudo "$RECONCILE" "$SCRIPT_DIR/systemd"
+  sudo "$RECONCILE" "$SCRIPT_DIR/systemd" || die "systemd drop-in reconcile failed"
 else
-  echo "  hm-reconcile-units or systemd sources not present — skipping drop-in reconcile"
+  echo "  hm-reconcile-units not installed — skipping systemd drop-in reconcile"
 fi
 
 say "Stopping application services"
