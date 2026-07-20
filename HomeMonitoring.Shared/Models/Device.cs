@@ -3,7 +3,7 @@
 public class Device
 {
     public int Id { get; init; }
-    public required string Name { get; init; }
+    public required string Name { get; set; }
     public required string IpAddress { get; set; }
     public HomeWizardProductType ProductType { get; set; }
     public required string SerialNumber { get; init; }

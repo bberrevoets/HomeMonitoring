@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Author: *Bert Berrevoets*
 
+- Rename a device from the **Devices** page: a new `Devices/Edit` page (wired to the existing per-row
+  **Edit** button) lets you change a device's friendly name. The name is required and length-validated,
+  persisted directly, and never overwritten by the polling `Worker` or HomeWizard discovery.
 - `CLAUDE.md` with build/run commands, EF migration workflow, and architecture notes for AI agents.
 - Production deployment tooling under `deploy/`: a `systemd` one-shot migration unit
   (`HomeMonitoringMigration`), ordering drop-ins that make the agent and dashboard wait for it,
