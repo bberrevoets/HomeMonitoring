@@ -65,6 +65,13 @@ public class HomeWizardService : IHomeWizardService
             _logger.LogDebug("Device at {IpAddress} is not reachable (device info)", ipAddress);
             throw;
         }
+        catch (JsonException ex)
+        {
+            // Unexpected/incomplete payload (e.g. older firmware): expected for a best-effort refresh,
+            // and the caller decides what to do — don't log it as an error on every attempt.
+            _logger.LogDebug(ex, "Device at {IpAddress} returned invalid device-info JSON", ipAddress);
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting device info from {IpAddress}", ipAddress);

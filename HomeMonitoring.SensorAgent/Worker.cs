@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using HomeMonitoring.SensorAgent.Metrics;
 using HomeMonitoring.SensorAgent.Services;
@@ -16,8 +17,12 @@ public class Worker : BackgroundService
     private readonly SensorAgentMetrics _metrics;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
 
-    // Firmware/API version change rarely, so refresh them a few times a day rather than every poll.
+    // Firmware/API version change rarely, so refresh them a few times a day rather than every poll;
+    // after a failed refresh, back off (retry interval) instead of re-hitting /api on every poll. The
+    // per-device next-refresh time is tracked in-memory (re-fetched once after a restart, which is fine).
     private readonly TimeSpan _deviceInfoRefreshInterval = TimeSpan.FromHours(6);
+    private readonly TimeSpan _deviceInfoRetryInterval = TimeSpan.FromMinutes(30);
+    private readonly ConcurrentDictionary<int, DateTime> _nextDeviceInfoRefresh = new();
     private readonly IServiceProvider _serviceProvider;
 
     public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, SensorAgentMetrics metrics)
@@ -132,10 +137,9 @@ public class Worker : BackgroundService
             tracked.WifiSsid = energyData.WifiSsid;
             tracked.WifiStrength = energyData.WifiStrength;
 
-            // Refresh firmware/API info a few times a day (or the first time we ever reach the device),
+            // Refresh firmware/API info a few times a day (and the first time we reach the device),
             // reusing this poll's keep-alive connection so we don't open a competing one.
-            if (tracked.DeviceInfoUpdatedAt is null ||
-                DateTime.UtcNow - tracked.DeviceInfoUpdatedAt.Value > _deviceInfoRefreshInterval)
+            if (!_nextDeviceInfoRefresh.TryGetValue(device.Id, out var nextRefresh) || DateTime.UtcNow >= nextRefresh)
             {
                 try
                 {
@@ -143,12 +147,15 @@ public class Worker : BackgroundService
                     tracked.FirmwareVersion = info.FirmwareVersion;
                     tracked.ApiVersion = info.ApiVersion;
                     tracked.DeviceInfoUpdatedAt = DateTime.UtcNow;
+                    _nextDeviceInfoRefresh[device.Id] = DateTime.UtcNow + _deviceInfoRefreshInterval;
                 }
                 // Firmware refresh is best-effort — an offline device, a non-2xx /api response, or
                 // bad/incomplete JSON (e.g. older firmware omitting a required field) must NOT discard
-                // the energy reading saved below. Swallow everything except a shutdown cancellation.
+                // the energy reading saved below. Swallow everything except a shutdown cancellation, and
+                // back off so a persistent failure doesn't re-hit /api (and re-log) on every poll.
                 catch (Exception ex) when (!(ex is OperationCanceledException && stoppingToken.IsCancellationRequested))
                 {
+                    _nextDeviceInfoRefresh[device.Id] = DateTime.UtcNow + _deviceInfoRetryInterval;
                     _logger.LogDebug(ex,
                         "Could not refresh device info for {DeviceName} ({IpAddress}); keeping the energy reading",
                         device.Name, device.IpAddress);
