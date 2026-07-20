@@ -144,9 +144,13 @@ public class Worker : BackgroundService
                     tracked.ApiVersion = info.ApiVersion;
                     tracked.DeviceInfoUpdatedAt = DateTime.UtcNow;
                 }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                // Firmware refresh is best-effort — an offline device, a non-2xx /api response, or
+                // bad/incomplete JSON (e.g. older firmware omitting a required field) must NOT discard
+                // the energy reading saved below. Swallow everything except a shutdown cancellation.
+                catch (Exception ex) when (!(ex is OperationCanceledException && stoppingToken.IsCancellationRequested))
                 {
-                    _logger.LogDebug(ex, "Could not refresh device info for {DeviceName} ({IpAddress})",
+                    _logger.LogDebug(ex,
+                        "Could not refresh device info for {DeviceName} ({IpAddress}); keeping the energy reading",
                         device.Name, device.IpAddress);
                 }
             }
