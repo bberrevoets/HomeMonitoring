@@ -84,6 +84,9 @@ try
 #pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
     builder.Services.AddHttpClient(HomeWizardService.HttpClientName)
         .RemoveAllResilienceHandlers();
+    // Same rationale for the Hue bridge (LAN calls, no retries wanted, no per-attempt log noise).
+    builder.Services.AddHttpClient(PhilipsHueService.HttpClientName)
+        .RemoveAllResilienceHandlers();
 #pragma warning restore EXTEXP0001
 
     // Register HomeWizard service
