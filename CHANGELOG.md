@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Author: *Bert Berrevoets*
 
 - `CLAUDE.md` with build/run commands, EF migration workflow, and architecture notes for AI agents.
+- Production deployment tooling under `deploy/`: a `systemd` one-shot migration unit
+  (`HomeMonitoringMigration`), ordering drop-ins that make the agent and dashboard wait for it,
+  a `deploy.sh` helper, and `deploy/README.md` documenting the self-contained `linux-arm64`
+  host layout, deploy, and rollback procedure.
+- Required, data-annotation-validated `Email` settings (`EmailSettings`) with fail-fast
+  `ValidateOnStart`; `SmtpHost`/`SmtpPort` are supplied from the Aspire `mailpit` connection string.
 
 ### Changed
 
@@ -24,6 +30,8 @@ Author: *Bert Berrevoets*
 
 - Renamed Serilog enrichment property `Application` to `Service` across Web and SensorAgent.
 - Upgraded to .NET 10 GA, Aspire 13, and EF Core 10.
+- Bumped NuGet packages across all projects.
+- Raised the markdownlint line-length limit to 180 to match the documented standard.
 
 ### Fixed
 
@@ -31,6 +39,9 @@ Author: *Bert Berrevoets*
 
 - `PhilipsHueLightMonitorService` now handles cancellation cleanly instead of logging on shutdown.
 - Dropped `HealthChecks.UI` to unblock EF Core 10 startup.
+- OpenTelemetry `service.name` is now set explicitly on the resource (and on the Serilog OTLP
+  sink), so traces and logs are no longer reported as `unknown_service` when a service runs
+  outside Aspire (e.g. exporting straight to an external OTLP/Grafana stack).
 
 ### Removed
 

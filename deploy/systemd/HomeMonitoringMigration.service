@@ -1,0 +1,16 @@
+[Unit]
+Description=HomeMonitoring DB Migration (one-shot)
+After=network-online.target
+Wants=network-online.target
+Before=HomeMonitoringSensorAgent.service HomeMonitoringDashboard.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=bert
+WorkingDirectory=/home/bert/MigrationLinux
+ExecStart=/home/bert/MigrationLinux/HomeMonitoring.MigrationService
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
