@@ -80,12 +80,11 @@ try
     // Dedicated client for LAN device polling. AddServiceDefaults adds the standard resilience handler
     // to every client; for HomeWizard that means retries + Warning spam on the (expected) offline
     // device, and a shared circuit breaker where one flaky device can fail the others. Strip it so a
-    // failed poll is a single fast attempt handled by the Worker's Debug-level catch.
-    // ConnectionClose: HomeWizard devices accept only a tiny number of simultaneous connections, so a
-    // pooled keep-alive connection held between polls monopolizes the device's single slot and makes it
-    // refuse every other client (e.g. the Web Details page's live fetch). Close after each request.
+    // failed poll is a single fast attempt handled by the Worker's Debug-level catch. The agent is the
+    // only client that contacts the connection-limited devices (the Web reads status from the DB), so
+    // keep-alive is fine and lets a poll's energy + device-info requests share one connection.
 #pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
-    builder.Services.AddHttpClient(HomeWizardService.HttpClientName, c => c.DefaultRequestHeaders.ConnectionClose = true)
+    builder.Services.AddHttpClient(HomeWizardService.HttpClientName)
         .RemoveAllResilienceHandlers();
     // Same rationale for the Hue bridge (LAN calls, no retries wanted, no per-attempt log noise).
     builder.Services.AddHttpClient(PhilipsHueService.HttpClientName)

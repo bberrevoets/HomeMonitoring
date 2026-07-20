@@ -15,6 +15,9 @@ public class Worker : BackgroundService
     private readonly ILogger<Worker> _logger;
     private readonly SensorAgentMetrics _metrics;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(10);
+
+    // Firmware/API version change rarely, so refresh them a few times a day rather than every poll.
+    private readonly TimeSpan _deviceInfoRefreshInterval = TimeSpan.FromHours(6);
     private readonly IServiceProvider _serviceProvider;
 
     public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, SensorAgentMetrics metrics)
@@ -123,6 +126,30 @@ public class Worker : BackgroundService
                 TotalGasM3 = energyData.TotalGasM3
             });
             tracked.LastSeenAt = DateTime.UtcNow;
+
+            // Persist last-known WiFi status (free — it's already in the energy response) so the
+            // Devices/Details page can show it without contacting the connection-limited device.
+            tracked.WifiSsid = energyData.WifiSsid;
+            tracked.WifiStrength = energyData.WifiStrength;
+
+            // Refresh firmware/API info a few times a day (or the first time we ever reach the device),
+            // reusing this poll's keep-alive connection so we don't open a competing one.
+            if (tracked.DeviceInfoUpdatedAt is null ||
+                DateTime.UtcNow - tracked.DeviceInfoUpdatedAt.Value > _deviceInfoRefreshInterval)
+            {
+                try
+                {
+                    var info = await homeWizardService.GetDeviceInfoAsync(device.IpAddress, stoppingToken);
+                    tracked.FirmwareVersion = info.FirmwareVersion;
+                    tracked.ApiVersion = info.ApiVersion;
+                    tracked.DeviceInfoUpdatedAt = DateTime.UtcNow;
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                {
+                    _logger.LogDebug(ex, "Could not refresh device info for {DeviceName} ({IpAddress})",
+                        device.Name, device.IpAddress);
+                }
+            }
 
             await dbContext.SaveChangesAsync(stoppingToken);
 

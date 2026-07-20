@@ -57,16 +57,10 @@ try
     // Add HttpClient for device communication
     builder.Services.AddHttpClient();
 
-    // Dedicated client for the Details page's live HomeWizard fetch. AddServiceDefaults adds the
-    // standard resilience handler to every client; for LAN device polling that means retries + Warning
-    // spam on an (expected) offline device. Strip it so an unreachable device fails fast. ConnectionClose
-    // matches the SensorAgent: HomeWizard devices allow very few simultaneous connections, so we must not
-    // hold a keep-alive connection open (it would monopolize the device's single slot).
-#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
-    builder.Services.AddHttpClient(HomeWizardService.HttpClientName, c => c.DefaultRequestHeaders.ConnectionClose = true)
-        .RemoveAllResilienceHandlers();
     // The dashboard polls the Hue bridge every 2s; strip resilience so Polly doesn't log a
-    // per-attempt telemetry line for every local call.
+    // per-attempt telemetry line for every local call. (The device Details page reads HomeWizard status
+    // from the DB and never contacts the device, so no HomeWizard client is registered here.)
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers is experimental
     builder.Services.AddHttpClient(PhilipsHueService.HttpClientName)
         .RemoveAllResilienceHandlers();
 #pragma warning restore EXTEXP0001
@@ -86,8 +80,6 @@ try
     // Add dashboard services
     builder.Services.AddScoped<IDashboardService, DashboardService>();
     builder.Services.AddScoped<IPhilipsHueService, PhilipsHueService>();
-    // Details page fetches live device info (firmware, WiFi, live power) on demand.
-    builder.Services.AddScoped<IHomeWizardService, HomeWizardService>();
     builder.Services.AddHostedService<DashboardUpdateService>();
 
     var app = builder.Build();

@@ -57,7 +57,8 @@ Five .NET 10 projects wired together by Aspire:
 - [HomeMonitoring.SensorAgent](HomeMonitoring.SensorAgent/) — three hosted services:
   - `Worker` — every 10s polls all enabled HomeWizard devices **concurrently** (one DI scope +
     `DbContext` per device, so a slow/unreachable device can't stall the others), writes
-    `EnergyReading` rows, updates `Device.LastSeenAt`.
+    `EnergyReading` rows, updates `Device.LastSeenAt`, and persists last-known status on the `Device`
+    (WiFi SSID/strength every poll — it's free in the energy response; firmware/API a few times a day).
   - `DeviceMonitoringService` — sends email alerts (via Mailpit in dev) when devices exceed
     `Email:DeviceOfflineThresholdMinutes`. Offline detection is suppressed during a short startup-grace
     window so a restart's stale `LastSeenAt` doesn't fire a false alert before the `Worker` re-polls.
@@ -72,9 +73,10 @@ Five .NET 10 projects wired together by Aspire:
   - Note: Web references `HomeMonitoring.SensorAgent` to reuse `IPhilipsHueService` — the Web project
     instantiates the same Hue service classes directly, it does **not** call SensorAgent over HTTP.
   - **Devices pages** (`Pages/Devices/`): `Index` lists devices with per-row **Edit** / **Details** /
-    **Delete**. `Details` is read-only and fetches live device info via `IHomeWizardService` (registered
-    in the Web host for this) with a graceful offline fallback; **Delete** is a confirmation modal on
-    `Index` backed by `OnPostDelete` (cascade-removes `EnergyReading` rows). `Index` and `Details` carry
+    **Delete**. `Details` is read-only and shows the device's last-known status (firmware, WiFi, current
+    power) read **from the DB** — it does **not** contact the device (HomeWizard sockets accept ~one
+    client connection, held by the SensorAgent). **Delete** is a confirmation modal on `Index` backed by
+    `OnPostDelete` (cascade-removes `EnergyReading` rows). `Index` and `Details` carry
     `[ResponseCache(NoStore=…)]` so volatile Last Seen / reading counts aren't served from browser cache.
   - **Theming**: dark/light mode uses Bootstrap 5.3's `data-bs-theme` attribute on `<html>`, persisted
     in `localStorage` (key `theme`). The stored theme is applied by an **inline, render-blocking script
@@ -99,9 +101,10 @@ Five .NET 10 projects wired together by Aspire:
   (`PhilipsHueService.HttpClientName`) instead use dedicated named clients registered with
   `RemoveAllResilienceHandlers()` — for expected-offline LAN devices, retries/circuit-breaker only add
   Warning-level log spam and can trip and fail unrelated devices; a failed poll is a single fast attempt.
-  The HomeWizard client additionally sets `Connection: close` (`DefaultRequestHeaders.ConnectionClose`):
-  the devices accept only a few simultaneous connections, so a held-open keep-alive connection would
-  monopolize the device's single slot and make it refuse other clients (e.g. the Web Details live fetch).
+  Only the SensorAgent contacts the HomeWizard devices — the sockets accept ~one connection at a time,
+  so the Web reads device status from the DB (see the Devices `Details` page) rather than polling them.
+  (Corollary: don't run a second poller — e.g. a production instance — against the same physical devices;
+  the two will fight over that one connection.)
 
 ## Conventions
 

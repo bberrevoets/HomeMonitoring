@@ -17,9 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Author: *Bert Berrevoets*
 
 - View a device's full details from the **Devices** page: a new `Devices/Details` page (wired to the
-  per-row **Details** button) shows stored fields plus live info fetched from the device — firmware,
-  API version, product name, WiFi SSID/strength, meter model and live power — with a graceful
-  "unreachable" fallback, and statistics over its collected readings.
+  per-row **Details** button) shows the device's last-known status — firmware, API version, WiFi
+  SSID/strength and current power — that the SensorAgent persists as it polls (read from the DB; the
+  device itself accepts only one client connection, held by the agent), plus statistics over its
+  collected readings.
 - Delete a device from the **Devices** page: the per-row **Delete** button opens a confirmation modal
   warning that all collected data is permanently deleted, then removes the device and cascade-deletes
   its `EnergyReading` rows.
@@ -40,6 +41,9 @@ Author: *Bert Berrevoets*
 
 - The SensorAgent now polls all HomeWizard devices **concurrently** (one DI scope + `DbContext` per
   device) instead of sequentially, so a slow or unreachable device no longer delays the others.
+- The SensorAgent now persists each device's last-known status (WiFi every poll; firmware/API a few
+  times a day) on the `Device` row, so the dashboard and Details pages can show it without contacting
+  the connection-limited device.
 - Raised the SensorAgent `Email:DeviceOfflineThresholdMinutes` from 1 to 5.
 - Renamed Serilog enrichment property `Application` to `Service` across Web and SensorAgent.
 - Upgraded to .NET 10 GA, Aspire 13, and EF Core 10.
@@ -51,10 +55,10 @@ Author: *Bert Berrevoets*
 Author: *Bert Berrevoets*
 
 - The device **Details** page showed "unreachable" even while the device was being polled
-  successfully. HomeWizard sockets accept only a few simultaneous connections, and the SensorAgent's
-  pooled keep-alive connection monopolized the device's single slot, so every other client was
-  refused. Device HTTP clients now send `Connection: close` to free the slot between polls, and the
-  Details page retries its on-demand live fetch to ride out a rare collision with a poll.
+  successfully. HomeWizard sockets accept only ~one client connection, which the SensorAgent holds, so
+  the web page could never reach the device directly. The Details page now reads the device's last-known
+  status (firmware / WiFi / power) from the DB — persisted by the agent as it polls — and never contacts
+  the device (adds a `Device` status-columns migration).
 - Devices that were online were intermittently reported **offline**. Fixed by concurrent polling
   (above), a dedicated resilience-free `HttpClient` for device calls (no retries/circuit-breaker for
   expected-offline LAN devices), and a startup-grace window in `DeviceMonitoringService` so a restart's
