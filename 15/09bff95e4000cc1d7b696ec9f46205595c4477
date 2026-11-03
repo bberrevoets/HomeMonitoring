@@ -1,0 +1,34 @@
+CHANGELOG.md
+  s_66be80588d2b7a::t_bbd79356f6d8fc 12-13
+  s_66be80588d2b7a::t_0db273e2b6b723 42-49
+AGENTS.md
+  s_66be80588d2b7a::t_2cad9de7a99a33 1-5
+  s_66be80588d2b7a::t_c265f72cbe3a53 6-8
+  s_66be80588d2b7a::t_2d141e14706b6c 9-193
+.gitattributes
+  s_66be80588d2b7a::t_458cf5c580073c 69-83
+.gitignore
+  s_66be80588d2b7a::t_79eeba2dbb0936 374-385
+CLAUDE.md
+  s_66be80588d2b7a::t_5a2b54cfb611b9 3-4,6
+README.md
+  s_66be80588d2b7a::t_5c308ecb39f359 1,435-449
+aspire.config.json
+  s_66be80588d2b7a::t_8028afc8deeab1 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1509bff95e4000cc1d7b696ec9f46205595c4477",
+  "prompts": {},
+  "sessions": {
+    "s_66be80588d2b7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26349a25-b31d-4ae6-bdbc-bb4d831f555b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "B.N. Berrevoets <bert@berrevoets.net>"
+    }
+  }
+}
