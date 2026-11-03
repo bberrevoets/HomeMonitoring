@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bert Berrevoets (B.N. Berrevoets)
 - dependabot[bot]
+- Claude Opus 4.7 and Claude Opus 4.8 — co-authors of the 2026-07 work (deploy tooling, device pages, fixes)
+- Claude Opus 5.5 — co-author of the 2026-11 AI agent setup
 
 ## [Unreleased]
 
@@ -36,6 +38,14 @@ Author: *Bert Berrevoets*
   `ValidateOnStart`; `SmtpHost`/`SmtpPort` are supplied from the Aspire `mailpit` connection string.
 
 ### Changed
+
+Author: *Bert Berrevoets, Claude Opus 5.5*
+
+- AI agent setup (2026-11): the instructions moved from `CLAUDE.md` to `AGENTS.md` (single source for Claude Code,
+  Codex and other agents) with a `CLAUDE.md` stub that imports it; repo-init blocks in `.gitignore` and
+  `.gitattributes`; Conventions section in `README.md` (now saved as UTF-8 without BOM). An untracked
+  `AGENTS.md` that Codex had generated as a copy of `CLAUDE.md` was dropped. `aspire.config.json` (the Aspire CLI
+  project file that points `aspire run` at `AppHost/AppHost.csproj`) is now tracked.
 
 Author: *Bert Berrevoets*
 

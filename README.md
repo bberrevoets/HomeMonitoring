@@ -1,4 +1,4 @@
-﻿# HomeMonitoring
+# HomeMonitoring
 
 A comprehensive home energy monitoring system built with .NET Aspire that tracks and visualizes energy consumption from HomeWizard devices and controls Philips Hue lights.
 
@@ -432,3 +432,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Smart Notifications**: Suppress notifications for user-initiated changes
 - **Real-time Updates**: Enhanced SignalR implementation for lights and energy data
 - **.NET 10 Upgrade**: Updated to latest .NET framework
+
+## Conventions
+
+- **Branching:** GitHub Flow. `main` is protected and accepts changes only through pull requests.
+- **Markdown:** linted with `markdownlint-cli2`, 180 character limit.
+
+  ```sh
+  npx markdownlint-cli2 "**/*.md"
+  ```
+
+- **Binaries:** tracked with Git LFS; the covered types and any deliberate exceptions are listed in
+  [AGENTS.md](AGENTS.md). Run `git lfs install` once per machine before cloning; in a clone made without it, run
+  `git lfs install` and then `git lfs pull` to download the files.
+- **Agent instructions:** in [AGENTS.md](AGENTS.md), read by Claude Code, Codex and any other coding agent.
+  `CLAUDE.md` only imports it, so edit `AGENTS.md`.
