@@ -93,6 +93,22 @@ Author: *Bert Berrevoets*
 
 - Per-project `appsettings.Development.json` files (now provided via Aspire / user secrets).
 
+### Security
+
+Author: *Bert Berrevoets, Claude Opus 5.5*
+
+- `AspNetCore.HealthChecks.Network` removed from the SensorAgent: none of its health checks is used, and it pulled
+  `SSH.NET` 2023.0.0 (CVE-2026-48798, high; its newest 9.0.0 still does).
+- One Aspire version again: `Aspire.AppHost.Sdk` 9.4.2 → 13.6.4 and all Aspire packages 13.4.6 → 13.6.4
+  (`MessagePack` 2.5.302 → 2.5.307), `CommunityToolkit.Aspire.Hosting.MailPit` 13.4.0 → 13.6.1; EF Core and
+  `Microsoft.Extensions.Hosting` 10.0.10 → 10.0.14 (required by the Aspire 13.6 EF integration).
+- `System.Security.Cryptography.Pkcs` 10.0.14 referenced directly in Shared and the AppHost (CVE-2026-84008):
+  `Microsoft.Data.SqlClient` still brings 10.0.12.
+- Aspire 13.6 runs Seq and Mailpit without a proxy, and their health checks on `localhost` timed out on `::1`,
+  so the SensorAgent and the web app stayed in Waiting: the Seq `http` and Mailpit `http` / `smtp` endpoints are
+  proxied again. Verified with an AppHost run on 2026-11-03 (fresh containers): all resources healthy after 43 s,
+  migration exit 0, `/`, `/Devices`, `/health` and `/alive` → 200, no warnings in the SensorAgent log.
+
 ## [2025-09-13]
 
 ### Added
