@@ -1,0 +1,27 @@
+AppHost/AppHost.csproj
+  s_66be80588d2b7a::t_3d64eecee0afe9 3,14-20
+HomeMonitoring.MigrationService/HomeMonitoring.MigrationService.csproj
+  s_66be80588d2b7a::t_596988940d3819 11-13,17-18
+HomeMonitoring.SensorAgent/HomeMonitoring.SensorAgent.csproj
+  s_66be80588d2b7a::t_f844271037163b 11,13-15,19
+HomeMonitoring.Shared/HomeMonitoring.Shared.csproj
+  s_66be80588d2b7a::t_5103592190f2ca 10-16,20
+HomeMonitoring.Web/HomeMonitoring.Web.csproj
+  s_66be80588d2b7a::t_4b7c47fa6b9402 18-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b4d98e614ed9333b397f94bbb44847a7a861272",
+  "prompts": {},
+  "sessions": {
+    "s_66be80588d2b7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26349a25-b31d-4ae6-bdbc-bb4d831f555b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "B.N. Berrevoets <bert@berrevoets.net>"
+    }
+  }
+}
