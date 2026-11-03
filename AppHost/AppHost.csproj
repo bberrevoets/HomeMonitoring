@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Sdk Name="Aspire.AppHost.Sdk" Version="9.4.2" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.4" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,10 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
-	  <PackageReference Include="Aspire.Hosting.Seq" Version="13.4.6" />
-	  <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.4.6" />
-	  <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.4.0" />
+	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.4" />
+	  <PackageReference Include="Aspire.Hosting.Seq" Version="13.6.4" />
+	  <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
+	  <!-- Microsoft.Data.SqlClient (via Aspire / EF Core SqlServer) brings System.Security.Cryptography.Pkcs 10.0.12:
+	       CVE-2026-84008 (fixed in 10.0.13). Remove once SqlClient brings a fixed version. -->
+	  <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+	  <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.6.1" />
 	  <PackageReference Include="KubernetesClient" Version="19.0.2" />
   </ItemGroup>
 

@@ -142,6 +142,10 @@ Five .NET 10 projects wired together by Aspire:
 
 ## Conventions
 
+- **Aspire 13.6: Seq and Mailpit endpoints are proxied on purpose** (`IsProxied = true` in `AppHost.cs`). 13.6
+  publishes container ports on `127.0.0.1` only; their HTTP health checks call `http://localhost:<port>`, which
+  Windows tries on `::1` first and times out, so the resources stay Unhealthy and `WaitFor(seq)` /
+  `WaitFor(mailPit)` never start the SensorAgent and the web app. Do not remove the proxy settings.
 - Configuration sections used in code: `DashboardSettings` (Web); on the SensorAgent the `Email`
   section (bound to `EmailSettings`, **validated at startup** — `SmtpHost`/`SmtpPort` are filled
   from the Aspire `mailpit` connection string) plus `Monitoring:PollingIntervalSeconds` and
