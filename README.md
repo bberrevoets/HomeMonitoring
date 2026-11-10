@@ -179,8 +179,10 @@ with an "unreachable" note and a **Refresh** button.
 ## Deleting a Device
 
 Click **Delete** on a device's row. A confirmation dialog warns that **all collected data for the
-device (its energy readings) will be permanently deleted and cannot be recovered**. Confirming removes
-the device and cascades the deletion of its readings.
+device (its energy readings) will be permanently deleted and cannot be recovered**. Confirming disables
+the device first (the SensorAgent stops polling it within 10 seconds), then deletes its readings in batches and
+finally the device itself; the success message says how many readings went. A device with months of readings can
+take a few minutes. If the page is closed halfway, the device stays disabled and **Delete** again finishes the job.
 
 ## Setting Up Philips Hue
 

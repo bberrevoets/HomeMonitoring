@@ -110,7 +110,11 @@ Five .NET 10 projects wired together by Aspire:
     **Delete**. `Details` is read-only and shows the device's last-known status (firmware, WiFi, current
     power) read **from the DB** — it does **not** contact the device (HomeWizard sockets accept ~one
     client connection, held by the SensorAgent). **Delete** is a confirmation modal on `Index` backed by
-    `OnPostDelete` (cascade-removes `EnergyReading` rows). `Index` and `Details` carry
+    `OnPostDelete`: it first sets `IsEnabled = false` (polling stops within one cycle), then removes the
+    `EnergyReading` rows in batches of 5000 (`ExecuteDeleteAsync` with `Take`), then the device. **Don't go back
+    to the single cascade delete**: for a device with months of readings it runs past SQL Server's 30 s command
+    timeout on the remote database and the device stays (2026-11-10). An interrupted delete leaves the device
+    disabled; clicking Delete again continues. `Index` and `Details` carry
     `[ResponseCache(NoStore=…)]` so volatile Last Seen / reading counts aren't served from browser cache.
   - **Theming**: dark/light mode uses Bootstrap 5.3's `data-bs-theme` attribute on `<html>`, persisted
     in `localStorage` (key `theme`). The stored theme is applied by an **inline, render-blocking script
@@ -125,9 +129,15 @@ Five .NET 10 projects wired together by Aspire:
   connection string has form `endpoint=smtp://host:port` and is parsed manually in
   [SensorAgent Program.cs](HomeMonitoring.SensorAgent/Program.cs).
 - **Logging**: Serilog bootstrap logger → reconfigured from config, enriched with
-  `Service` property (`HomeMonitoring.Web` / `HomeMonitoring.SensorAgent`), shipped to Seq and OTLP.
-  Aspire's OTLP endpoint is in `OTEL_EXPORTER_OTLP_ENDPOINT`. The Serilog OTLP sink also sets the
-  `service.name` resource attribute (it does not read `OTEL_SERVICE_NAME` on its own).
+  `Service` property (`HomeMonitoring.Web` / `HomeMonitoring.SensorAgent`), shipped to the console and
+  **directly to Seq only**. There is deliberately no Serilog OTLP sink (removed 2026-11-10): in production the
+  laptop's OTel collector forwards OTLP logs to Seq too, so every event was stored twice, the second copy
+  without its message template. Traces and metrics still go over OTLP (`OTEL_EXPORTER_OTLP_ENDPOINT`, via
+  `AddServiceDefaults`). `AddSerilog` replaces the logging providers, so the `Logging:LogLevel` sections in
+  `appsettings.json` do nothing: levels live in the `Serilog:MinimumLevel` section of **both** apps, with
+  `Microsoft` and `System.Net.Http.HttpClient` at `Warning`. Without the HttpClient override every poll logs four
+  Information lines, a dead device adds "HTTP request failed" with its exception (~100,000 events a day for three
+  retired sockets), and the Hue bridge URL — which contains the Hue API key — ends up in Seq.
 - **Health checks**: each service adds `sql-server` (tagged `db`,`ready`) plus service-specific checks
   (`signalr` on Web, `device-connectivity` on SensorAgent). Endpoints are Dev-only.
 - **HTTP clients for LAN polling**: `AddServiceDefaults()` attaches the standard resilience handler to
@@ -148,8 +158,9 @@ Five .NET 10 projects wired together by Aspire:
   `WaitFor(mailPit)` never start the SensorAgent and the web app. Do not remove the proxy settings.
 - Configuration sections used in code: `DashboardSettings` (Web); on the SensorAgent the `Email`
   section (bound to `EmailSettings`, **validated at startup** — `SmtpHost`/`SmtpPort` are filled
-  from the Aspire `mailpit` connection string) plus `Monitoring:PollingIntervalSeconds` and
-  `Monitoring:HealthCheckIntervalMinutes`.
+  from the Aspire `mailpit` connection string) plus `Monitoring:HealthCheckIntervalMinutes`. The HomeWizard poll
+  interval is a hardcoded 10 s (`Worker.cs`, `_pollingInterval`); `Monitoring:PollingIntervalSeconds` in
+  `appsettings.json` is not read anywhere.
 - **Secrets convention**: each app has a single committed `appsettings.json` where every secret value
   is the literal marker `"InSecrets"` (`ConnectionStrings:sensorsdb`/`seq`/`mailpit`, `SeqApiKey`,
   `Email:SmtpUsername`/`SmtpPassword`, `OTEL_EXPORTER_OTLP_ENDPOINT`). Real dev values come from **User Secrets** (loaded only in the

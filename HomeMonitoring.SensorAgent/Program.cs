@@ -6,7 +6,6 @@ using HomeMonitoring.Shared.Data;
 using HomeMonitoring.Shared.Models;
 using Microsoft.Extensions.Options;
 using Serilog;
-using Serilog.Sinks.OpenTelemetry;
 using ServiceDefaults;
 
 // Configure Serilog early
@@ -27,18 +26,9 @@ try
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Service", "HomeMonitoring.SensorAgent")
         .WriteTo.Console()
-        .WriteTo.OpenTelemetry(options =>
-        {
-            options.Endpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
-            // The Serilog OTLP sink doesn't read OTEL_SERVICE_NAME on its own; set service.name
-            // explicitly so logs aren't tagged "unknown_service" in Grafana/Loki.
-            options.ResourceAttributes = new Dictionary<string, object>
-            {
-                ["service.name"] = builder.Configuration["OTEL_SERVICE_NAME"] ?? "HomeMonitoring.SensorAgent"
-            };
-            options.IncludedData = IncludedData.TraceIdField |
-                                   IncludedData.SpanIdField;
-        })
+        // Logs go to Seq once, directly (structured, with message templates). No Serilog OTLP sink: the laptop's
+        // collector forwards OTLP logs to Seq as well, which stored every event twice. Traces and metrics still go
+        // over OTLP via AddServiceDefaults.
         .WriteTo.Seq(
             builder.Configuration.GetConnectionString("seq") ?? "http://localhost:5341",
             apiKey: builder.Configuration["SeqApiKey"]));

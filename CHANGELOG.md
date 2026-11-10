@@ -39,6 +39,16 @@ Author: *Bert Berrevoets*
 
 ### Changed
 
+Author: *Claude Opus 5.5*
+
+- **About a tenth of the log volume in Seq.** Both apps set `System.Net.Http.HttpClient` to `Warning`, and the Web
+  app got the `Serilog` section it never had (`Microsoft` at `Warning`), so EF Core's "Executed DbCommand" and the
+  four Information lines per HTTP request are gone; that also stops the Hue bridge URL, which contains the Hue API
+  key, from being logged. Serilog's OpenTelemetry log sink is removed from both apps: the laptop's collector
+  forwarded those logs to Seq too, so every event was stored twice. Traces and metrics still go over OTLP. Before:
+  about a million events a day, ~100,000 of them "HTTP request failed" for three HomeWizard sockets retired on
+  2026-10-18.
+
 Author: *Bert Berrevoets, Claude Opus 5.5*
 
 - AI agent setup (2026-11): the instructions moved from `CLAUDE.md` to `AGENTS.md` (single source for Claude Code,
@@ -61,6 +71,13 @@ Author: *Bert Berrevoets*
 - Raised the markdownlint line-length limit to 180 to match the documented standard.
 
 ### Fixed
+
+Author: *Claude Opus 5.5*
+
+- **Deleting a device works again for devices with history.** The cascade delete put all of a device's
+  `EnergyReading` rows into one statement, which ran past SQL Server's 30 s command timeout on the remote database
+  ("Execution Timeout Expired"), so the device stayed and kept being polled. Delete now disables the device first,
+  removes the readings in batches of 5000 and then the device, and reports how many readings went.
 
 Author: *Bert Berrevoets*
 
