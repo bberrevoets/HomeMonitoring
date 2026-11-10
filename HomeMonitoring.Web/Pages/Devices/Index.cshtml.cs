@@ -12,10 +12,12 @@ namespace HomeMonitoring.Web.Pages.Devices;
 public class IndexModel : PageModel
 {
     private readonly SensorDbContext _context;
+    private readonly ILogger<IndexModel> _logger;
 
-    public IndexModel(SensorDbContext context)
+    public IndexModel(SensorDbContext context, ILogger<IndexModel> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public IList<Device> Devices { get; set; } = null!;
@@ -30,11 +32,37 @@ public class IndexModel : PageModel
         var device = await _context.Devices.FindAsync(id);
         if (device is null) return NotFound();
 
-        // EnergyReadings are removed automatically via the configured cascade delete.
+        // 1. Disable first: the SensorAgent rereads the enabled devices every cycle, so polling stops within one
+        //    cycle even if the rest takes minutes or is interrupted. A second click continues where this one stopped.
+        if (device.IsEnabled)
+        {
+            device.IsEnabled = false;
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Remove the readings in batches. Leaving them to the cascade delete puts months of readings into one
+        //    statement, which ran past SQL Server's 30 s command timeout and failed (2026-11-10). Each batch uses
+        //    the (DeviceId, Timestamp) index. No request token on purpose: a closed browser tab must not stop it.
+        var removed = 0;
+        int batch;
+        do
+        {
+            batch = await _context.EnergyReadings
+                .Where(r => r.DeviceId == id)
+                .Take(DeleteBatchSize)
+                .ExecuteDeleteAsync();
+            removed += batch;
+        } while (batch > 0);
+
+        // 3. The device itself, now without readings.
         _context.Devices.Remove(device);
         await _context.SaveChangesAsync();
 
-        TempData["SuccessMessage"] = $"Deleted device '{device.Name}' and all its collected data.";
+        _logger.LogInformation("Deleted device {DeviceName} ({DeviceId}) and {ReadingCount} readings",
+            device.Name, id, removed);
+        TempData["SuccessMessage"] = $"Deleted device '{device.Name}' and {removed:N0} readings.";
         return RedirectToPage("./Index");
     }
+
+    private const int DeleteBatchSize = 5000;
 }
