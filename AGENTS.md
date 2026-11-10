@@ -166,7 +166,10 @@ Five .NET 10 projects wired together by Aspire:
   `Email:SmtpUsername`/`SmtpPassword`, `OTEL_EXPORTER_OTLP_ENDPOINT`). Real dev values come from **User Secrets** (loaded only in the
   Development environment; Aspire also injects the `ConnectionStrings__*` env vars, which override the
   markers). Do **not** add `appsettings.Development.json`/`appsettings.Production.json` — they are
-  gitignored. In production the deploy substitutes the markers (see below).
+  gitignored. In production the deploy substitutes the markers (see below). **Change a production value through
+  its GitHub Secret and a deploy, never only in the deployed file**: every deploy rebuilds `appsettings.json` from
+  the secrets, which undid a hand edit of the Seq address and key on 2026-11-10 (see
+  [deploy/README.md](deploy/README.md), "Changing a production value").
 - `Device.ProductType` (enum `HomeWizardProductType`) is persisted as **string** (see `OnModelCreating`).
   When polling, the `Worker` skips any product type other than `HWE_P1` or `HWE_SKT` and disables a
   device on `NotSupportedException` — don't add new product types without updating the switch in
