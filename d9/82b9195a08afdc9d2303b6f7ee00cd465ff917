@@ -1,0 +1,37 @@
+HomeMonitoring.Web/Pages/Devices/Index.cshtml.cs
+  s_f3dfe087383237::t_14cdce0e88bdb8 15,17,20
+  s_f3dfe087383237::t_3dd93068b6fa89 35-57,61-63,66-67
+CHANGELOG.md
+  s_f3dfe087383237::t_1d6f47909b52de 42-51
+  s_f3dfe087383237::t_4203e544d5f12e 75-81
+AGENTS.md
+  s_f3dfe087383237::t_314a5619290b34 161-163
+  s_f3dfe087383237::t_274ce7935a262d 113-117
+  s_f3dfe087383237::t_a394e84caeb223 132-140
+HomeMonitoring.SensorAgent/Program.cs
+  s_f3dfe087383237::t_677cd73ddbd8e1 29-31
+HomeMonitoring.Web/appsettings.json
+  s_f3dfe087383237::t_b45d4a16e92109 20-29
+HomeMonitoring.Web/Program.cs
+  s_f3dfe087383237::t_b73c2ff04f74a4 28-30
+HomeMonitoring.SensorAgent/appsettings.json
+  s_f3dfe087383237::t_72e957c5352a91 39-40
+README.md
+  s_f3dfe087383237::t_be9320965875ba 182-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d982b9195a08afdc9d2303b6f7ee00cd465ff917",
+  "prompts": {},
+  "sessions": {
+    "s_f3dfe087383237": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d71e923-a64d-4e33-b43f-36793689a098",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "B.N. Berrevoets <bert@berrevoets.net>"
+    }
+  }
+}
