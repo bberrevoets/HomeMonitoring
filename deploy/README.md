@@ -133,6 +133,29 @@ substitution: it walks each published `appsettings.json`, and for every leaf equ
 `"InSecrets"` looks up the env var named by the `__`-joined key path. **It fails the build if
 any marker has no matching secret**, so an `InSecrets` literal can never reach production.
 
+### Changing a production value
+
+Change the **GitHub Secret**, then deploy. Never fix a value only in the deployed `appsettings.json` on the box: the
+next deploy rebuilds that file from the secrets and the fix is gone, silently.
+
+```bash
+# on PCKantoor; a value from a file or another host goes in through stdin, never on the command line
+printf '%s' 'http://192.168.180.3:5341' | gh secret set ConnectionStrings__seq --repo bberrevoets/HomeMonitoring
+gh workflow run deploy.yml --repo bberrevoets/HomeMonitoring
+```
+
+That trap went off on 2026-11-10. Someone had pointed the deployed files at the laptop's Seq by hand, while
+`ConnectionStrings__seq` and `SeqApiKey` still held piserver's Seq. Nobody deployed from July to November, so it held;
+then piserver's Seq was decommissioned, the next deploy restored the old secrets, and both apps logged into nothing
+for ten minutes. The working values survived only in `~/<App>Linux.bak` (`deploy.sh` keeps one previous copy, which
+the deploy after that overwrites).
+
+- **Before a deploy after a long gap**, compare the deployed values with the secrets. Compare them by hash on the
+  box so no value is printed, e.g. `grep -o '"SeqApiKey": *"[^"]*"' ~/AgentLinux/appsettings.json | sha256sum`
+  against the same line from the freshly deployed `.bak`.
+- **Seq** is the laptop's (`http://192.168.180.3:5341`, intake). Since 2026-11-10 **one** `SeqApiKey` (the
+  SensorAgent's key) serves both apps; the `Service` property tells them apart in Seq.
+
 ## GitHub Actions deploy (self-hosted runner)
 
 Production is deployed by the **Deploy to on-prem** workflow

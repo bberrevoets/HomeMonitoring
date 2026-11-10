@@ -41,7 +41,13 @@ Author: *Bert Berrevoets*
 
 Author: *Claude Opus 5.5*
 
-- **About a tenth of the log volume in Seq.** Both apps set `System.Net.Http.HttpClient` to `Warning`, and the Web
+- **Production logs to the laptop's Seq again, from the secrets.** The first deploy of the change below restored the
+  GitHub Secrets `ConnectionStrings__seq` and `SeqApiKey`, which still held piserver's (decommissioned) Seq; the
+  deployed files had been pointed at the laptop's Seq by hand. Bert set both secrets to the laptop's values (one key
+  for both apps) and redeployed. `deploy/README.md` gains "Changing a production value", and `AGENTS.md` the rule:
+  change the secret and deploy, never only the file on the box.
+- **Over 95 % less log volume in Seq** (measured: 7,192 → 81 HomeMonitoring events in 10 minutes, no duplicates, no
+  errors). Both apps set `System.Net.Http.HttpClient` to `Warning`, and the Web
   app got the `Serilog` section it never had (`Microsoft` at `Warning`), so EF Core's "Executed DbCommand" and the
   four Information lines per HTTP request are gone; that also stops the Hue bridge URL, which contains the Hue API
   key, from being logged. Serilog's OpenTelemetry log sink is removed from both apps: the laptop's collector
