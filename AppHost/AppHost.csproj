@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.4" />
+	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
 	  <PackageReference Include="Aspire.Hosting.Seq" Version="13.6.4" />
 	  <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
 	  <!-- Microsoft.Data.SqlClient (via Aspire / EF Core SqlServer) brings System.Security.Cryptography.Pkcs 10.0.12:
