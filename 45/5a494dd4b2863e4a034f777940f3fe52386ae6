@@ -1,0 +1,30 @@
+HomeMonitoring.MigrationService/HomeMonitoring.MigrationService.csproj
+  s_2a273800b8070d::t_0cd080464e280a 11
+HomeMonitoring.Web/HomeMonitoring.Web.csproj
+  s_2a273800b8070d::t_0cd080464e280a 18
+HomeMonitoring.Shared/HomeMonitoring.Shared.csproj
+  s_2a273800b8070d::t_0cd080464e280a 10
+HomeMonitoring.SensorAgent/HomeMonitoring.SensorAgent.csproj
+  s_2a273800b8070d::t_0cd080464e280a 11
+AppHost/AppHost.csproj
+  s_2a273800b8070d::t_0cd080464e280a 3,15-16
+CHANGELOG.md
+  s_2a273800b8070d::t_c46eedb5055f04 122,124-127
+  s_2a273800b8070d::t_eec952235b7a2b 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "455a494dd4b2863e4a034f777940f3fe52386ae6",
+  "prompts": {},
+  "sessions": {
+    "s_2a273800b8070d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea0033e1-4a14-4792-99cc-8fa887049602",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "B.N. Berrevoets <bert@berrevoets.net>"
+    }
+  }
+}
