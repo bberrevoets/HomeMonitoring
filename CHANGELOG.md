@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dependabot[bot]
 - Claude Opus 4.7 and Claude Opus 4.8 — co-authors of the 2026-07 work (deploy tooling, device pages, fixes)
 - Claude Opus 5.5 — co-author of the 2026-11 AI agent setup
+- Claude Fable 5.2 — co-author of the 2026-11-22 Aspire security update
 
 ## [Unreleased]
 
@@ -118,8 +119,12 @@ Author: *Bert Berrevoets*
 
 ### Security
 
-Author: *Bert Berrevoets, Claude Opus 5.5*
+Author: *Bert Berrevoets, Claude Opus 5.5, Claude Fable 5.2, dependabot[bot]*
 
+- Aspire 13.6.4 → 13.6.5 (CVE-2026-120006, high: elevation of privilege, GHSA-f7vh-h5g3-7jrh). Dependabot raised
+  only `Aspire.Hosting.AppHost`; `Aspire.AppHost.Sdk`, `Aspire.Hosting.Seq`, `Aspire.Hosting.SqlServer` and
+  `Aspire.Microsoft.EntityFrameworkCore.SqlServer` (four projects) went along, to keep one Aspire version. The SDK
+  line matters most: it selects the dashboard and orchestrator binaries, where the fix lives.
 - `AspNetCore.HealthChecks.Network` removed from the SensorAgent: none of its health checks is used, and it pulled
   `SSH.NET` 2023.0.0 (CVE-2026-48798, high; its newest 9.0.0 still does).
 - One Aspire version again: `Aspire.AppHost.Sdk` 9.4.2 → 13.6.4 and all Aspire packages 13.4.6 → 13.6.4
